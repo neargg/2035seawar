@@ -1,0 +1,73 @@
+name: CI - Game Logic Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'versions/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: AI Engine & Game Logic
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Run game logic tests
+        run: |
+          node tests/ai-engine.test.js
+      
+      - name: Run V6.0 E2E smoke test
+        run: |
+          node tests/v6-e2e.test.js
+      
+      - name: Validate HTML structure
+        run: |
+          for f in versions/v*/[0-9]*.html; do
+            if [ -f "$f" ]; then
+              echo "Validating $f..."
+              # 简单结构检查
+              grep -q '<!DOCTYPE html>' "$f" || (echo "Missing DOCTYPE" && exit 1)
+              grep -q '</html>' "$f" || (echo "Missing closing html" && exit 1)
+              # 检查 line count
+              lines=$(wc -l < "$f")
+              echo "  $f: $lines lines"
+              if [ "$lines" -gt 5000 ]; then
+                echo "  ⚠️  File too large ($lines lines), consider splitting"
+              fi
+            fi
+          done
+      
+      - name: Check for known TDZ bug
+        run: |
+          if grep -q "typeof animQueue !== 'undefined' && animQueue" versions/v6.0/*.html; then
+            echo "❌ V6.0 still has the TDZ initialization bug"
+            echo "   Fix: wrap in try/catch in Settings.apply()"
+            exit 1
+          else
+            echo "✅ No TDZ bug detected"
+          fi
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
