@@ -1035,7 +1035,12 @@ class AnimationQueue {
     if (!this.playing) this.playNext();
   }
   playNext() {
-    if (this.queue.length === 0) { this.playing = false; return; }
+    if (this.queue.length === 0) {
+      this.playing = false;
+      // P0-3 fix: 动画队列全部完成后触发最终渲染
+      if (typeof render === 'function') render();
+      return;
+    }
     this.playing = true;
     const fn = this.queue.shift();
     try { fn(() => this.playNext()); } catch(e) { this.playNext(); }
@@ -1119,7 +1124,9 @@ class ParticleSystem {
   loop() {
     let lastT = performance.now();
     const step = () => {
-      const dt = 16;
+      const now = performance.now();
+      const dt = Math.min(32, now - lastT);  // P1-3 fix: 使用实际帧间隔，上限32ms
+      lastT = now;
       this.particles = this.particles.filter(p => p.life > 0);
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       for (const p of this.particles) {
@@ -2132,7 +2139,7 @@ function endTurn() {
   if (state.phase !== 'main') return;
   if (state.mode === 'online') { sendAction('end_turn', {}); return; }
   if (checkVictory()) return;
-  resetExhausted();
+  resetExhausted(state.turn);  // P1-5: 只重置当前回合方
   state.selectedCardIdx = null;
   state.selectedAdvance = null;
   state.selectedBlockade = false;
@@ -2165,7 +2172,9 @@ function endTurn() {
 
 function aiFinishTurn() {
   if (state.phase === 'ended' || state.turn !== 'ai') return;
-  resetExhausted();
+  // P0-1 fix: AI 回合结束时先检查胜利条件
+  if (checkVictory()) return;
+  resetExhausted('ai');  // P1-5: AI 回合结束，重置 AI 方
   state.selectedCardIdx = null;
   state.selectedAdvance = null;
   state.selectedBlockade = false;
@@ -2197,11 +2206,12 @@ function confirmPass() {
   startTurn(state.turn);
 }
 
-function resetExhausted() {
-  ['player', 'ai'].forEach(who => {
-    state[who].support.forEach(u => { if (u) u.exhausted = false; });
-    state[who].frontline.forEach(u => { if (u) u.exhausted = false; });
-  });
+function resetExhausted(who) {
+  // P1-5 fix: 只重置指定方的 exhausted，不再重置双方
+  // 调用时传入回合切换前的当前方（即将结束回合的一方）
+  const target = who || state.turn;
+  state[target].support.forEach(u => { if (u) u.exhausted = false; });
+  state[target].frontline.forEach(u => { if (u) u.exhausted = false; });
 }
 
 // ==================== 卡牌管理 ====================
@@ -3494,7 +3504,11 @@ function doAttack(attacker, target, atkWho, tgtWho) {
           atkVal, counterDmg,
           targetKilled, attackerKilled,
           isMissile, targetIsHQ
-        }).then(() => { done(); resolve(); });
+        }).then(() => {
+          done();
+          checkVictory();  // P0-2 fix: 动画完成后检查胜利
+          resolve();
+        });
       });
     });
   }
@@ -3642,7 +3656,7 @@ class AIEngine {
       else if (cost >= 3) score += cost * 2;
       else score += 5;
       if (act.def.carrierSpawn) score += 10;
-      if (strat.unitBonus) score += strat.unitBonus(act.def);
+      if (typeof strat.unitBonus === 'function') score += strat.unitBonus(act.def);
       if (this.difficulty === 'hard' && state.round >= 2) {
         const maxCost = Math.max(...state.ai.hand.map(cid => CARDS[cid] ? CARDS[cid].cost.deploy : 0));
         if (cost === maxCost) score += 8;
@@ -3655,7 +3669,7 @@ class AIEngine {
       if (cost < handMaxCost - 2 && state.k.ai.cur >= handMaxCost) score -= 5;
     } else if (act.type === 'advance') {
       score += 15;
-      if (strat.advanceMod) score += strat.advanceMod(state.round);
+      if (typeof strat.advanceMod === 'function') score += strat.advanceMod(state.round);
     } else if (act.type === 'op') {
       const id = act.def.id;
       if (id === 'c_intel' || id === 'l_intel' || id === 'j_intel' || id === 'r_intel' ||
@@ -3693,7 +3707,7 @@ class AIEngine {
         const enemyAir = [...state.player.frontline, ...state.player.support].some(u => u && u.type === 'air');
         if (enemyAir) score += 8;
       }
-      if (strat.opBonus) score += strat.opBonus(id);
+      if (typeof strat.opBonus === 'function') score += strat.opBonus(id);
       if (this.difficulty === 'easy' && Math.random() < 0.3) score -= 20;
     }
     return score;
@@ -3800,6 +3814,8 @@ function log(msg, kind='') {
 // ==================== 渲染 ====================
 function render() {
   if (!state) return;
+  // P0-3 fix: 动画播放期间跳过全量重绘，避免打断动画
+  if (settings.get('animation') && animQueue.playing) return;
   syncHQ('player');
   syncHQ('ai');
   const me = getViewSide();
