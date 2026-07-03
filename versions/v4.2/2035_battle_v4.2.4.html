@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚓ 2035 大海战 · V4.2</title>
+<style>
+  :root {
+    --bg-deep: #061322;
+    --bg-mid: #0a1f38;
+    --bg-light: #122e4f;
+    --text-primary: #e8eef5;
+    --text-secondary: #9aabc4;
+    --text-mute: #5a6a82;
+    --accent-blue: #88c0ff;
+    --accent-gold: #ffc966;
+    --accent-red: #ff7766;
+    --accent-green: #88dd99;
+    --res-k: #ffd700;
+    --type-surface: #4a7cb3;
+    --type-subsurf: #2a5a8a;
+    --type-air: #b3664a;
+    --type-op: #8a4ab3;
+    --border-normal: rgba(100,150,255,0.25);
+    --border-glow: rgba(136,192,255,0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(74,124,179,0.18) 0%, transparent 50%),
+      linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 12px;
+    user-select: none;
+  }
+  .wrap {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 12px;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: calc(100vh - 24px);
+  }
+  .left-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .right-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+  /* === 顶部 HUD === */
+  header {
+    padding: 12px 14px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 100%);
+    border: 1px solid var(--border-glow);
+    border-radius: 10px;
+  }
+  h1 {
+    font-size: 18px;
+    color: var(--accent-blue);
+    letter-spacing: 2px;
+    font-weight: 600;
+    text-shadow: 0 0 8px rgba(136,192,255,0.4);
+    margin-bottom: 4px;
+  }
+  h1 .ver { font-size: 11px; color: var(--accent-gold); margin-left: 4px; }
+  .round-info {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: "SF Mono", monospace;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .resources { display: flex; flex-wrap: wrap; gap: 6px; }
+  .res {
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.3);
+    font-family: "SF Mono", monospace;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .res.k {
+    color: var(--res-k);
+    border: 1px solid rgba(255,215,0,0.5);
+    box-shadow: 0 0 8px rgba(255,215,0,0.2);
+    min-width: 80px;
+    text-align: center;
+  }
+  .res.hq-p {
+    color: var(--accent-blue);
+    border: 1px solid rgba(136,192,255,0.4);
+    background: linear-gradient(90deg, rgba(136,192,255,0.1), rgba(0,0,0,0.3));
+    flex: 1;
+  }
+  .res.hq-a {
+    color: var(--accent-red);
+    border: 1px solid rgba(255,119,102,0.4);
+    background: linear-gradient(90deg, rgba(255,119,102,0.1), rgba(0,0,0,0.3));
+    flex: 1;
+  }
+
+  /* 联机状态指示器 */
+  .net-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-mute);
+    flex-shrink: 0;
+  }
+  .net-dot.on { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+  .net-dot.wait { background: var(--accent-gold); animation: blink 1s infinite; }
+  .net-dot.off { background: var(--accent-red); }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  /* === 战场 === */
+  .battle-area {
+    position: relative;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(74,124,179,0.08) 0%, transparent 60%),
+      linear-gradient(180deg, #0a1a30 0%, #0c2540 50%, #0a1a30 100%);
+    border: 2px solid var(--border-glow);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .frontline-banner {
+    text-align: center;
+    color: var(--accent-gold);
+    font-size: 11px;
+    letter-spacing: 6px;
+    margin: 6px 0;
+    opacity: 0.7;
+  }
+  .row-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .row-label.enemy { color: var(--accent-red); }
+  .row-label.player { color: var(--accent-blue); }
+
+  .line {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px dashed var(--border-normal);
+    min-height: 130px;
+    margin-bottom: 10px;
+  }
+  .line.support-enemy { background: rgba(255,119,102,0.05); border-color: rgba(255,119,102,0.3); }
+  .line.support-player { background: rgba(136,192,255,0.05); border-color: rgba(136,192,255,0.3); }
+  .line.front { background: rgba(255,201,102,0.08); border: 2px solid rgba(255,201,102,0.4); }
+  .line.front.contested { border-color: var(--accent-red); background: rgba(255,119,102,0.05); }
+
+  .slot {
+    background: rgba(20,40,70,0.5);
+    border: 1px solid var(--border-normal);
+    border-radius: 8px;
+    min-height: 110px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .slot:hover { background: rgba(30,60,100,0.7); border-color: var(--accent-blue); }
+  .slot.highlight { border-color: var(--accent-gold); background: rgba(255,201,102,0.15); box-shadow: 0 0 14px rgba(255,201,102,0.4); animation: pulse 1.2s infinite; }
+  .slot.target { border-color: var(--accent-red); background: rgba(255,119,102,0.15); box-shadow: 0 0 14px rgba(255,119,102,0.4); animation: pulse 1.2s infinite; cursor: crosshair; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+  .slot.disabled { cursor: not-allowed; opacity: 0.4; }
+  .slot.empty { background: rgba(0,0,0,0.2); }
+
+  /* HQ 卡 */
+  .hq-card {
+    width: 100%;
+    height: 100%;
+    min-height: 100px;
+    background: linear-gradient(135deg, #1a3a5a 0%, #0d2540 100%);
+    border: 2px solid var(--accent-gold);
+    border-radius: 6px;
+    padding: 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 0 12px rgba(255,201,102,0.4);
+    position: relative;
+  }
+  .hq-card .hq-icon { font-size: 32px; line-height: 1; filter: drop-shadow(0 0 4px rgba(255,255,255,0.3)); }
+  .hq-card .hq-name { font-size: 9px; color: var(--text-secondary); margin: 2px 0; }
+  .hq-card .hq-hp { font-family: "SF Mono", monospace; font-weight: 700; font-size: 14px; color: var(--accent-gold); }
+  .hq-card .hq-bar { width: 90%; height: 4px; background: rgba(0,0,0,0.5); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+  .hq-card .hq-fill { height: 100%; background: var(--accent-green); transition: width 0.3s; }
+  .hq-card .shield-buff { position: absolute; top: 2px; right: 2px; font-size: 10px; color: var(--accent-gold); }
+
+  /* 单位卡 */
+  .card {
+    width: 100%; height: 100%; min-height: 100px;
+    background: linear-gradient(135deg, #1a3050 0%, #0e1f36 100%);
+    border: 2px solid #335; border-radius: 6px; padding: 4px 2px;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    position: relative; font-size: 10px; text-align: center;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--accent-blue); box-shadow: 0 4px 12px rgba(74,124,179,0.4); }
+  .card.selected { border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(255,201,102,0.6); }
+  .card .card-top { display: flex; justify-content: space-between; width: 100%; padding: 0 2px; }
+  .card .k-tag { background: var(--res-k); color: #000; font-weight: 700; padding: 0 4px; border-radius: 3px; font-size: 9px; font-family: "SF Mono", monospace; }
+  .card .type-badge { background: rgba(0,0,0,0.6); padding: 0 4px; border-radius: 3px; font-size: 8px; color: var(--text-secondary); }
+  .card .icon { font-size: 22px; line-height: 1; }
+  .card .name { font-size: 9px; font-weight: bold; color: #d4e4ff; line-height: 1.1; }
+  .card .stats { display: flex; gap: 4px; font-family: "SF Mono", monospace; font-weight: 600; font-size: 10px; }
+  .card .atk { color: var(--accent-red); }
+  .card .hp { color: var(--accent-green); }
+  .card.ewarfare .atk { color: var(--text-mute); text-decoration: line-through; }
+  .card.t-surface { border-color: var(--type-surface); }
+  .card.t-subsurf { border-color: var(--type-subsurf); }
+  .card.t-air { border-color: var(--type-air); }
+  .card.t-op { border-color: var(--type-op); background: linear-gradient(135deg, #3a1a5a 0%, #2a0d3a 100%); }
+  .card.t-op .icon { font-size: 26px; }
+  .card.t-op .name { color: var(--accent-gold); }
+  .card.too-expensive { opacity: 0.4; cursor: not-allowed; }
+  .card.exhausted { opacity: 0.55; filter: grayscale(0.3); }
+  .card.blockaded::before { content: '🚧'; position: absolute; top: 2px; left: 2px; font-size: 12px; z-index: 2; }
+  .card.in-hand { width: 110px; height: 150px; min-height: 150px; padding: 6px; font-size: 11px; }
+  .card.in-hand .icon { font-size: 26px; }
+  .card.in-hand .name { font-size: 10px; }
+
+  /* === 手牌区 === */
+  .hand-area {
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%);
+    border: 1px solid var(--border-normal);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .hand-title { font-size: 12px; color: var(--accent-blue); margin-bottom: 8px; letter-spacing: 1px; }
+  .hand { display: flex; gap: 8px; flex-wrap: wrap; min-height: 160px; }
+
+  /* === 控制 === */
+  .controls { display: flex; gap: 8px; }
+  button {
+    flex: 1; padding: 10px 14px;
+    background: linear-gradient(135deg, #2a5a8a, #1a3a5a);
+    border: 1px solid #4a7cb3; color: #fff;
+    border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    transition: all 0.2s;
+  }
+  button:hover:not(:disabled) { background: linear-gradient(135deg, #3a6a9a, #2a4a6a); box-shadow: 0 0 12px rgba(74,124,179,0.4); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: linear-gradient(135deg, var(--accent-gold), #c3903a); border-color: var(--accent-gold); color: #1a1a1a; }
+  button.primary:hover:not(:disabled) { box-shadow: 0 0 16px rgba(255,201,102,0.5); }
+
+  /* === 日志 === */
+  .log {
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 100%);
+    border: 1px solid var(--border-normal);
+    border-radius: 8px;
+    flex: 1; min-height: 180px; max-height: 220px;
+    overflow-y: auto;
+    font-size: 11px; line-height: 1.6;
+    color: #c0d0e0; font-family: "SF Mono", monospace;
+  }
+  .log .entry { padding: 1px 0; }
+  .log .damage { color: var(--accent-red); }
+  .log .heal { color: var(--accent-green); }
+  .log .info { color: var(--accent-blue); }
+  .log .warn { color: var(--accent-gold); }
+
+  .help {
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-normal);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  .help b { color: var(--accent-gold); }
+
+  /* === 胜利弹窗 === */
+  .victory-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none; justify-content: center; align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+  .victory-overlay.show { display: flex; }
+  .victory-card {
+    background: linear-gradient(135deg, #1a3050 0%, #0e1f36 100%);
+    border: 2px solid var(--accent-gold);
+    border-radius: 12px;
+    padding: 32px; text-align: center;
+    box-shadow: 0 0 60px rgba(255,201,102,0.4);
+  }
+  .victory-card h2 { font-size: 28px; color: var(--accent-gold); margin-bottom: 16px; letter-spacing: 4px; }
+  .victory-card p { margin-bottom: 16px; color: #c0d0e0; }
+
+  /* === 通用全屏遮罩 === */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,10,25,0.95);
+    display: none; justify-content: center; align-items: center;
+    z-index: 200;
+    backdrop-filter: blur(8px);
+  }
+  .overlay.show { display: flex; }
+
+  /* === 开始界面卡片 === */
+  .start-card {
+    background: linear-gradient(135deg, #1a3050 0%, #0e1f36 100%);
+    border: 2px solid var(--accent-gold);
+    border-radius: 16px;
+    padding: 40px 48px;
+    text-align: center;
+    box-shadow: 0 0 80px rgba(255,201,102,0.3);
+    max-width: 420px;
+    width: 90%;
+  }
+  .start-card h2 { font-size: 28px; color: var(--accent-blue); margin-bottom: 8px; letter-spacing: 3px; text-shadow: 0 0 12px rgba(136,192,255,0.5); }
+  .start-card .subtitle { font-size: 12px; color: var(--text-mute); margin-bottom: 28px; letter-spacing: 2px; }
+  .mode-btn {
+    display: block; width: 100%; padding: 16px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #2a5a8a, #1a3a5a);
+    border: 2px solid #4a7cb3; color: #fff;
+    border-radius: 10px; cursor: pointer;
+    font-size: 16px; font-weight: 600; font-family: inherit;
+    transition: all 0.3s; flex: none;
+  }
+  .mode-btn:hover:not(:disabled) { background: linear-gradient(135deg, #3a6a9a, #2a4a6a); box-shadow: 0 0 20px rgba(74,124,179,0.5); transform: translateY(-2px); }
+  .mode-btn .desc { font-size: 11px; font-weight: normal; color: var(--text-secondary); margin-top: 4px; }
+  .mode-btn.pvp { background: linear-gradient(135deg, #5a3a8a, #3a1a5a); border-color: #8a5ab3; }
+  .mode-btn.pvp:hover { box-shadow: 0 0 20px rgba(138,90,179,0.5); }
+  .mode-btn.online { background: linear-gradient(135deg, #2a8a5a, #1a5a3a); border-color: #4ab373; }
+  .mode-btn.online:hover { box-shadow: 0 0 20px rgba(74,179,115,0.5); }
+
+  /* === 交接画面 === */
+  .pass-card {
+    background: linear-gradient(135deg, #1a3050 0%, #0e1f36 100%);
+    border: 2px solid var(--accent-blue);
+    border-radius: 16px;
+    padding: 36px 44px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(136,192,255,0.3);
+  }
+  .pass-card .pass-icon { font-size: 48px; margin-bottom: 12px; }
+  .pass-card h2 { font-size: 22px; color: var(--accent-blue); margin-bottom: 8px; letter-spacing: 2px; }
+  .pass-card p { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+  .pass-card button { padding: 14px 36px; font-size: 16px; flex: none; }
+
+  /* === 联机大厅卡片 === */
+  .lobby-card {
+    background: linear-gradient(135deg, #1a3050 0%, #0e1f36 100%);
+    border: 2px solid var(--accent-gold);
+    border-radius: 16px;
+    padding: 36px 40px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(255,201,102,0.3);
+    max-width: 380px;
+    width: 90%;
+  }
+  .lobby-card h2 { font-size: 22px; color: var(--accent-blue); margin-bottom: 8px; letter-spacing: 2px; }
+  .lobby-card .subtitle { font-size: 11px; color: var(--text-mute); margin-bottom: 20px; letter-spacing: 1px; }
+  .room-code {
+    font-size: 36px; font-weight: 800; letter-spacing: 8px;
+    color: var(--accent-gold); font-family: "SF Mono", monospace;
+    padding: 16px; margin: 12px 0;
+    background: rgba(255,201,102,0.1);
+    border: 2px dashed var(--accent-gold);
+    border-radius: 8px;
+  }
+  .room-input {
+    width: 100%; padding: 14px;
+    font-size: 24px; letter-spacing: 6px;
+    text-align: center; text-transform: uppercase;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--border-glow);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: "SF Mono", monospace;
+    margin-bottom: 10px;
+  }
+  .room-input:focus { border-color: var(--accent-gold); outline: none; }
+  .lobby-section { margin-top: 10px; }
+  .lobby-status { font-size: 13px; color: var(--text-secondary); margin: 12px 0 16px; min-height: 20px; }
+  .lobby-status .err { color: var(--accent-red); }
+  .waiting-dots span {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--accent-gold);
+    margin: 0 2px; animation: wbounce 1.4s infinite ease-in-out both;
+  }
+  .waiting-dots span:nth-child(1) { animation-delay: -0.32s; }
+  .waiting-dots span:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes wbounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+  .lobby-btn {
+    display: block; width: 100%; padding: 13px;
+    margin-bottom: 8px; flex: none;
+    background: linear-gradient(135deg, #2a5a8a, #1a3a5a);
+    border: 2px solid #4a7cb3; color: #fff;
+    border-radius: 10px; cursor: pointer;
+    font-size: 14px; font-weight: 600; font-family: inherit;
+    transition: all 0.2s;
+  }
+  .lobby-btn:hover:not(:disabled) { background: linear-gradient(135deg, #3a6a9a, #2a4a6a); box-shadow: 0 0 16px rgba(74,124,179,0.4); }
+  .lobby-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .lobby-btn.gold { background: linear-gradient(135deg, var(--accent-gold), #c3903a); border-color: var(--accent-gold); color: #1a1a1a; }
+  .lobby-btn.back { background: rgba(0,0,0,0.3); border-color: var(--text-mute); font-size: 12px; padding: 9px; }
+
+  /* ========== 手机横屏适配 ========== */
+  @media (max-width: 926px) and (orientation: landscape) {
+    body { padding: 4px; }
+    .wrap { grid-template-columns: 1fr; gap: 4px; min-height: auto; }
+    .left-panel { order: 2; }
+    .right-panel { order: 1; }
+    header { padding: 6px 8px; }
+    h1 { font-size: 14px; margin-bottom: 2px; }
+    .round-info { font-size: 10px; margin-bottom: 4px; }
+    .resources { gap: 4px; }
+    .res { padding: 2px 6px; font-size: 10px; }
+    .battle-area { padding: 6px; }
+    .line { gap: 4px; padding: 4px; min-height: 90px; margin-bottom: 4px; }
+    .slot { min-height: 80px; padding: 2px; }
+    .card { min-height: 70px; }
+    .card .icon { font-size: 20px; }
+    .card .name { font-size: 8px; }
+    .hq-card { min-height: 70px; }
+    .hq-card .hq-icon { font-size: 24px; }
+    .help { display: none; }
+    .log { max-height: 60px; font-size: 10px; }
+    .hand-area { padding: 4px; }
+    .hand-title { font-size: 11px; }
+    .hand { gap: 4px; }
+    .card.in-hand { width: 80px; height: 110px; min-height: 110px; padding: 4px; }
+    .card.in-hand .icon { font-size: 20px; }
+    .start-card { padding: 24px 28px; }
+    .start-card h2 { font-size: 22px; }
+    .mode-btn { padding: 12px; font-size: 14px; }
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--accent-blue); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 开始界面 ===== -->
+<div class="overlay show" id="startOverlay">
+  <div class="start-card">
+    <h2>⚓ 2035 大海战</h2>
+    <div class="subtitle">V4.2 · 选择对战模式</div>
+    <button class="mode-btn" onclick="startGame('ai')">
+      🤖 人机对战
+      <div class="desc">与 AI 对手较量</div>
+    </button>
+    <button class="mode-btn pvp" onclick="startGame('pvp')">
+      👥 双人对战（热座）
+      <div class="desc">同一设备轮流操作，互相隐藏手牌</div>
+    </button>
+    <button class="mode-btn online" onclick="showLobby()">
+      🌐 联机对战
+      <div class="desc">通过房间号与远程好友实时对战</div>
+    </button>
+  </div>
+</div>
+
+<!-- ===== 热座交接画面 ===== -->
+<div class="overlay" id="passOverlay">
+  <div class="pass-card">
+    <div class="pass-icon" id="passIcon">📱</div>
+    <h2 id="passTitle">请将设备交给对方</h2>
+    <p id="passSub">确认对方看不到你的手牌后，点击开始</p>
+    <button class="primary" onclick="confirmPass()">✅ 我已准备好</button>
+  </div>
+</div>
+
+<!-- ===== 联机大厅 ===== -->
+<div class="overlay" id="lobbyOverlay">
+  <div class="lobby-card">
+    <h2>🌐 联机对战</h2>
+    <div class="subtitle" id="lobbySubtitle">创建或加入一个房间</div>
+
+    <!-- 主菜单 -->
+    <div id="lobbyMain">
+      <button class="lobby-btn gold" onclick="lobbyCreateRoom()">🏠 创建房间</button>
+      <button class="lobby-btn" onclick="lobbyShowJoin()">🔗 加入房间</button>
+      <button class="lobby-btn back" onclick="hideLobby()">← 返回主菜单</button>
+    </div>
+
+    <!-- 加入输入 -->
+    <div id="lobbyJoin" style="display:none">
+      <input class="room-input" id="roomInput" maxlength="4" placeholder="XXXX"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+        onkeydown="if(event.key==='Enter')lobbyDoJoin()">
+      <div class="lobby-status" id="joinStatus"></div>
+      <button class="lobby-btn gold" id="joinBtn" onclick="lobbyDoJoin()">✅ 加入</button>
+      <button class="lobby-btn back" onclick="lobbyBackToMain()">← 返回</button>
+    </div>
+
+    <!-- 等待对手 -->
+    <div id="lobbyWaiting" style="display:none">
+      <p style="color:var(--text-secondary);margin-bottom:8px;font-size:13px">将以下房间号发给对手：</p>
+      <div class="room-code" id="displayRoomCode">----</div>
+      <div class="lobby-status">
+        <div class="waiting-dots"><span></span><span></span><span></span></div>
+        等待对手加入中...
+      </div>
+      <button class="lobby-btn back" onclick="lobbyCancel()">← 取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 主游戏界面 ===== -->
+<div class="wrap">
+  <div class="left-panel">
+    <header>
+      <h1>⚓ 2035 大海战 <span class="ver">V4.2</span></h1>
+      <div class="round-info" id="roundInfo">
+        <span id="roundText">准备中...</span>
+        <span class="net-dot" id="netDot" style="display:none"></span>
+      </div>
+      <div class="resources">
+        <div class="res k">🟡 K <span id="resK">0</span> / <span id="resKMax">0</span></div>
+        <div class="res hq-p">🚢 <span id="hqPName">我方</span> HQ <span id="hqP">20</span>/20</div>
+        <div class="res hq-a">⚔ <span id="hqAName">敌方</span> HQ <span id="hqA">20</span>/20</div>
+      </div>
+    </header>
+
+    <div class="help">
+      <b>🎯 操作流程</b><br>
+      ① <b>点手牌</b> → 点 <span style="color:var(--accent-blue)">支援线空格</span> 部署<br>
+      ② <b>点我方任意单位</b> → 点敌方单位 = 攻击（含 HQ）<br>
+      ③ <b>点我方支援线水面舰</b> → 点前线空格推进（扣 K）<br>
+      ④ <b>结束回合</b> → 抽 1 张 + K+1（最大 12）<br>
+      🔒 <b>前线占领规则</b>：敌方前线有单位时，不能部署/推前线<br>
+      🟢🔴 <b>所有攻击都有反击</b> · 🌐 <b>V4.2 联机对战</b>：断线自动重连，60秒判胜
+    </div>
+
+    <div class="controls">
+      <button id="endBtn" class="primary">⏭️ 结束回合</button>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="right-panel">
+    <div class="battle-area">
+      <div class="row-label enemy" id="enemyLabel">▼ 敌方支援阵线 · HQ 在中</div>
+      <div class="line support-enemy" id="enemySupport"></div>
+
+      <div class="frontline-banner">━ ⚔ 前线 FRONTLINE ⚔ ━</div>
+      <div class="line front" id="frontline"></div>
+
+      <div class="row-label player" id="playerLabel">▲ 我方支援阵线 · HQ 在中</div>
+      <div class="line support-player" id="playerSupport"></div>
+    </div>
+
+    <div class="hand-area">
+      <div class="hand-title">🎴 <span id="handOwner">我方</span>手牌 <span id="handCount" style="color:var(--text-mute)">(0/9)</span> · <span style="font-size:10px;color:var(--text-mute)">指令卡点选即生效</span></div>
+      <div class="hand" id="hand"></div>
+    </div>
+  </div>
+</div>
+
+<div class="victory-overlay" id="victoryOverlay">
+  <div class="victory-card">
+    <h2 id="victoryTitle">胜利</h2>
+    <p id="victoryText"></p>
+    <button onclick="restartGame()">🔄 再来一局</button>
+  </div>
+</div>
+
+<script>
+// ==================== 音效 ====================
+class SoundManager {
+  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.5; }
+  init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+  play(type) {
+    if (!this.enabled || !this.ctx) return;
+    try {
+      if (type === 'deploy') this._beep(220, 440, 0.3);
+      else if (type === 'attack') this._noise(0.3, 1000);
+      else if (type === 'hit') this._beep(800, 200, 0.15, 'sawtooth');
+      else if (type === 'explosion') this._noise(0.5, 2000, 100);
+      else if (type === 'victory') this._fanfare([523.25, 659.25, 783.99, 1046.50], 0.15);
+      else if (type === 'defeat') this._fanfare([392, 349.23, 293.66, 261.63], 0.2);
+      else if (type === 'click') this._beep(800, 800, 0.05, 'sine', 0.1);
+      else if (type === 'error') this._beep(150, 150, 0.2, 'square', 0.2);
+      else if (type === 'magic') this._beep(440, 880, 0.4, 'triangle', 0.25);
+    } catch(e) {}
+  }
+  _beep(f1, f2, dur, type='sine', vol=0.3) {
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.connect(g); g.connect(this.ctx.destination);
+    o.type = type;
+    o.frequency.setValueAtTime(f1, this.ctx.currentTime);
+    o.frequency.linearRampToValueAtTime(f2, this.ctx.currentTime + dur);
+    g.gain.setValueAtTime(vol * this.volume, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    o.start(); o.stop(this.ctx.currentTime + dur);
+  }
+  _noise(dur, freq, endFreq=100) {
+    const n = this.ctx.sampleRate * dur;
+    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.4 * this.volume, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(freq, this.ctx.currentTime);
+    f.frequency.exponentialRampToValueAtTime(endFreq, this.ctx.currentTime + dur);
+    src.connect(f); f.connect(g); g.connect(this.ctx.destination);
+    src.start(); src.stop(this.ctx.currentTime + dur);
+  }
+  _fanfare(notes, gap) {
+    notes.forEach((f, i) => setTimeout(() => this._beep(f, f, 0.3, 'sine', 0.3), i * gap * 1000));
+  }
+}
+const soundManager = new SoundManager();
+document.addEventListener('click', () => soundManager.init(), { once: true });
+
+// ==================== 卡牌数据库 ====================
+const CARDS = {
+  c_055:    { id:'c_055',    name:'055 驱逐舰',     faction:'苍龙', type:'surface', cost:{deploy:4}, atk:4, hp:5, icon:'🚢', desc:'被动：相邻友军-1伤' },
+  c_055b:   { id:'c_055b',   name:'055B 改进型',    faction:'苍龙', type:'surface', cost:{deploy:5}, atk:5, hp:6, icon:'⛴️', desc:'中华神盾·改良版' },
+  c_fujian: { id:'c_fujian', name:'福建舰',         faction:'苍龙', type:'surface', cost:{deploy:8}, atk:2, hp:8, icon:'🛳️', desc:'被动：友军+1攻' },
+  c_096:    { id:'c_096',    name:'096 核潜艇',     faction:'苍龙', type:'subsurf', cost:{deploy:7}, atk:6, hp:5, icon:'🦈', desc:'深海幽灵：可攻击任意水面单位' },
+  c_039b:   { id:'c_039b',   name:'039B 常规潜艇',  faction:'苍龙', type:'subsurf', cost:{deploy:4}, atk:4, hp:3, icon:'🐟', desc:'仅需能源' },
+  c_j35:    { id:'c_j35',    name:'歼-35 舰载机',   faction:'苍龙', type:'air',     cost:{deploy:3}, atk:3, hp:2, icon:'✈️', desc:'空中优势' },
+  c_uuv:    { id:'c_uuv',    name:'UUV 蜂群',       faction:'苍龙', type:'subsurf', cost:{deploy:3}, atk:2, hp:2, icon:'🐙', desc:'死亡溅射：所在线全敌-1' },
+  c_drone:  { id:'c_drone',  name:'攻击-11 无人机', faction:'苍龙', type:'air',     cost:{deploy:2}, atk:2, hp:1, icon:'🛸', desc:'消耗品' },
+  c_df21d:  { id:'c_df21d',  name:'东风-21D',       faction:'苍龙', type:'air',     cost:{deploy:6}, atk:8, hp:1, icon:'🚀', desc:'跨线一次性' },
+  c_shield: { id:'c_shield', name:'神盾拦截',       faction:'苍龙', type:'op',      cost:{deploy:4}, atk:0, hp:0, icon:'🛡️', desc:'己方旗舰 +5 HP（可超上限）' },
+  c_ewarfare:{id:'c_ewarfare',name:'电子干扰',      faction:'苍龙', type:'op',      cost:{deploy:4}, atk:0, hp:0, icon:'📡', desc:'敌方飞机本回合 ATK 减半' },
+  c_intel:  { id:'c_intel',  name:'情报侦查',       faction:'苍龙', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🔍', desc:'抽 2 张牌' },
+  c_repair: { id:'c_repair', name:'紧急维修',       faction:'苍龙', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🔧', desc:'己方所有水面单位 +1 HP' },
+  c_bombard:{ id:'c_bombard',name:'战略轰炸',       faction:'苍龙', type:'op',      cost:{deploy:5}, atk:0, hp:0, icon:'💣', desc:'敌方所有单位 -1 HP' },
+  c_mobilize:{id:'c_mobilize',name:'战时动员',      faction:'苍龙', type:'op',      cost:{deploy:4}, atk:0, hp:0, icon:'📈', desc:'K +3（最多到上限）' },
+  c_blockade:{id:'c_blockade',name:'海上封锁',      faction:'苍龙', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🚧', desc:'选敌方一个单位，下回合不能攻击' },
+  l_burke:  { id:'l_burke',  name:'伯克级驱逐舰',   faction:'利维坦', type:'surface', cost:{deploy:4}, atk:4, hp:5, icon:'🚢', desc:'宙斯盾' },
+  l_tico:   { id:'l_tico',   name:'提康德罗加',     faction:'利维坦', type:'surface', cost:{deploy:5}, atk:4, hp:6, icon:'⛴️', desc:'巡洋舰' },
+  l_ford:   { id:'l_ford',   name:'福特级航母',     faction:'利维坦', type:'surface', cost:{deploy:8}, atk:2, hp:8, icon:'🛳️', desc:'被动：友军+1攻' },
+  l_virgin: { id:'l_virgin', name:'弗吉尼亚核潜艇', faction:'利维坦', type:'subsurf', cost:{deploy:5}, atk:5, hp:4, icon:'🦈', desc:'深海幽灵' },
+  l_seawolf:{ id:'l_seawolf',name:'海狼级核潜艇',   faction:'利维坦', type:'subsurf', cost:{deploy:4}, atk:4, hp:3, icon:'🐟', desc:'仅需能源' },
+  l_f35c:   { id:'l_f35c',   name:'F-35C 舰载机',   faction:'利维坦', type:'air',     cost:{deploy:3}, atk:3, hp:2, icon:'✈️', desc:'隐身：首攻+1' },
+  l_mq25:   { id:'l_mq25',   name:'MQ-25 黄貂鱼',   faction:'利维坦', type:'air',     cost:{deploy:2}, atk:2, hp:1, icon:'🛸', desc:'消耗品' },
+  l_tomahawk:{id:'l_tomahawk',name:'战斧巡航导弹',  faction:'利维坦', type:'air',     cost:{deploy:5}, atk:6, hp:1, icon:'🚀', desc:'跨线一次性' },
+  l_aegis:  { id:'l_aegis',  name:'宙斯盾升级',     faction:'利维坦', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🛡️', desc:'己方所有水面 +1 HP' },
+  l_csg:    { id:'l_csg',    name:'航母打击群',     faction:'利维坦', type:'op',      cost:{deploy:6}, atk:0, hp:0, icon:'✈️', desc:'召唤 2 个 F-35C 到支援线' },
+  l_repair: { id:'l_repair', name:'损管抢救',       faction:'利维坦', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🔧', desc:'己方所有水面 +1 HP' },
+  l_bombard:{ id:'l_bombard',name:'B-2 隐身轰炸',   faction:'利维坦', type:'op',      cost:{deploy:5}, atk:0, hp:0, icon:'💣', desc:'敌方所有单位 -1 HP' },
+  l_intel:  { id:'l_intel',  name:'卫星侦察',       faction:'利维坦', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🛰️', desc:'抽 2 张牌' }
+};
+
+const PLAYER_DECK = ['c_055','c_055','c_055b','c_fujian','c_096','c_039b','c_039b','c_j35','c_j35','c_uuv','c_uuv','c_drone','c_drone','c_df21d','c_shield','c_ewarfare','c_intel','c_repair','c_bombard','c_mobilize','c_blockade'];
+const AI_DECK     = ['l_burke','l_burke','l_tico','l_ford','l_virgin','l_seawolf','l_seawolf','l_f35c','l_f35c','l_mq25','l_mq25','l_tomahawk','l_aegis','l_csg','l_repair','l_bombard','l_intel'];
+
+// ==================== 全局变量 ====================
+const FRONTLINE_SIZE = 5;
+const HQ_SLOT = 2;
+
+let state = null;
+
+// V4.2 联机变量
+let wsConn = null;           // WebSocket 连接实例
+let wsHeartbeatTimer = null; // 心跳定时器
+let wsReconnectTimer = null; // 重连定时器
+let wsRoomId = null;         // 当前房间号（用于重连）
+let myOnlineSide = null;     // 'player' 或 'ai'（联机时我的阵营）
+let onlineRoomId = null;     // 当前房间号
+let isApplyingRemote = false;// 正在应用对方状态，防止回环发送
+
+// WS 地址：同域时走 nginx /ws 代理，本地开发时指定服务器
+const WS_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'ws://111.229.64.124/ws'
+  : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + '/ws';
+
+// ==================== 辅助函数 ====================
+function opp(who) { return who === 'player' ? 'ai' : 'player'; }
+
+function getViewSide() {
+  // 联机模式：始终从自己的视角渲染
+  if (state && state.mode === 'online') return myOnlineSide || 'player';
+  // 其他模式：从当前行动方视角渲染
+  return state ? state.turn : 'player';
+}
+
+function canAct() {
+  if (!state || state.phase !== 'main') return false;
+  if (state.mode === 'ai') return state.turn === 'player';
+  if (state.mode === 'online') return state.turn === myOnlineSide;
+  return true; // 热座：当前玩家均可操作
+}
+
+function playerName(who) {
+  if (!state) return who === 'player' ? '我方' : '敌方';
+  if (state.mode === 'pvp') {
+    return who === 'player' ? '玩家1（苍龙）' : '玩家2（利维坦）';
+  }
+  if (state.mode === 'online') {
+    return who === myOnlineSide ? '我方' : '敌方';
+  }
+  return who === 'player' ? '我方' : '敌方';
+}
+
+// ==================== 联机大厅 ====================
+function showLobby() {
+  document.getElementById('startOverlay').classList.remove('show');
+  document.getElementById('lobbyOverlay').classList.add('show');
+  lobbyBackToMain();
+}
+
+function hideLobby() {
+  wsDisconnect();
+  document.getElementById('lobbyOverlay').classList.remove('show');
+  document.getElementById('startOverlay').classList.add('show');
+}
+
+function lobbyBackToMain() {
+  document.getElementById('lobbyMain').style.display = 'block';
+  document.getElementById('lobbyJoin').style.display = 'none';
+  document.getElementById('lobbyWaiting').style.display = 'none';
+  document.getElementById('lobbySubtitle').textContent = '创建或加入一个房间';
+}
+
+function lobbyShowJoin() {
+  document.getElementById('lobbyMain').style.display = 'none';
+  document.getElementById('lobbyJoin').style.display = 'block';
+  document.getElementById('roomInput').value = '';
+  document.getElementById('joinStatus').innerHTML = '';
+  setTimeout(() => document.getElementById('roomInput').focus(), 100);
+}
+
+function lobbyCreateRoom() {
+  document.getElementById('lobbyMain').style.display = 'none';
+  document.getElementById('lobbySubtitle').textContent = '正在连接服务器...';
+  wsConnect(function() {
+    wsSend({ type: 'create_room' });
+  });
+}
+
+function lobbyDoJoin() {
+  const roomId = document.getElementById('roomInput').value.trim().toUpperCase();
+  if (roomId.length !== 4) {
+    document.getElementById('joinStatus').innerHTML = '<span class="err">请输入 4 位房间号</span>';
+    return;
+  }
+  document.getElementById('joinBtn').disabled = true;
+  document.getElementById('joinStatus').textContent = '正在连接...';
+  wsConnect(function() {
+    wsSend({ type: 'join_room', roomId });
+  });
+}
+
+function lobbyShowWaiting(roomId) {
+  document.getElementById('lobbyJoin').style.display = 'none';
+  document.getElementById('lobbyWaiting').style.display = 'block';
+  document.getElementById('displayRoomCode').textContent = roomId;
+  document.getElementById('lobbySubtitle').textContent = '等待对手加入...';
+}
+
+function lobbyCancel() {
+  wsDisconnect();
+  lobbyBackToMain();
+}
+
+// ==================== WebSocket 管理 ====================
+function wsConnect(onOpenCallback) {
+  wsDisconnect();
+  try {
+    wsConn = new WebSocket(WS_URL);
+  } catch(e) {
+    alert('无法连接到服务器，请检查网络');
+    return;
+  }
+  wsConn.onopen = function() {
+    updateNetDot('wait');
+    // 启动心跳：每 30 秒发送一次 ping
+    clearInterval(wsHeartbeatTimer);
+    wsHeartbeatTimer = setInterval(() => {
+      if (wsConn && wsConn.readyState === WebSocket.OPEN) {
+        try { wsConn.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch(e) {}
+      }
+    }, 30000);
+    if (onOpenCallback) onOpenCallback();
+  };
+  wsConn.onmessage = function(e) {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch(err) { return; }
+    // 忽略 pong 心跳回应（不刷日志）
+    if (msg.type === 'pong') return;
+    wsHandleMessage(msg);
+  };
+  wsConn.onclose = function(e) {
+    clearInterval(wsHeartbeatTimer);
+    wsHeartbeatTimer = null;
+    updateNetDot('off');
+    if (state && state.mode === 'online' && state.phase !== 'ended') {
+      log('⚠️ 网络连接断开，正在重连…', 'damage');
+      // 5 秒后自动重连（只重连一次，避免刷屏）
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(() => {
+        if (state && state.mode === 'online' && state.phase !== 'ended') {
+          log('🔄 尝试重新连接…', 'info');
+          wsConnect(() => {
+            // 重连成功，重新加入房间
+            if (wsRoomId) {
+              wsSend({ type: 'rejoin', roomId: wsRoomId, side: myOnlineSide });
+            }
+          });
+        }
+      }, 5000);
+    }
+  };
+  wsConn.onerror = function() {
+    updateNetDot('off');
+  };
+}
+
+function wsDisconnect() {
+  if (wsConn) {
+    try { wsConn.close(); } catch(e) {}
+    wsConn = null;
+  }
+}
+
+function wsSend(obj) {
+  if (wsConn && wsConn.readyState === WebSocket.OPEN) {
+    wsConn.send(JSON.stringify(obj));
+  }
+}
+
+function updateNetDot(status) {
+  const dot = document.getElementById('netDot');
+  if (!dot) return;
+  dot.className = 'net-dot ' + status;
+  dot.style.display = status ? 'inline-block' : 'none';
+}
+
+function wsHandleMessage(msg) {
+  switch (msg.type) {
+
+    case 'room_created':
+      onlineRoomId = msg.roomId;
+      wsRoomId = msg.roomId; // 保存房间号用于重连
+      lobbyShowWaiting(msg.roomId);
+      break;
+
+    case 'game_start':
+      // 两人都收到 game_start，各自得知自己是哪一方
+      myOnlineSide = msg.youAre;
+      onlineRoomId = msg.roomId;
+      wsRoomId = msg.roomId; // 保存房间号用于重连
+      document.getElementById('lobbyOverlay').classList.remove('show');
+      soundManager.init();
+      updateNetDot('on');
+      log(`🌐 联机对战开始！我方阵营：${myOnlineSide === 'player' ? '苍龙' : '利维坦'}`, 'info');
+      // 房主（player）创建并发送初始状态
+      if (myOnlineSide === 'player') {
+        newGame('online');
+        // newGame 内部已调用 startTurn，在那之后发送状态
+      }
+      // 加入者（ai）等待接收初始状态，不做任何事
+      break;
+
+    case 'state':
+      onReceiveState(msg.state);
+      break;
+
+    case 'error':
+      document.getElementById('joinStatus').innerHTML = `<span class="err">❌ ${msg.msg}</span>`;
+      document.getElementById('joinBtn').disabled = false;
+      break;
+
+    case 'rejoin_ok':
+      log('✅ 重连成功！', 'info');
+      updateNetDot('on');
+      break;
+
+    case 'opponent_left':
+      if (state && state.mode === 'online' && state.phase !== 'ended') {
+        log('⚠️ 对手已断开，等待重连…（若 60 秒未重连则判你获胜）', 'damage');
+        // 60 秒后若对手未重连，判当前玩家获胜
+        setTimeout(() => {
+          if (state && state.mode === 'online' && state.phase !== 'ended') {
+            state.phase = 'ended';
+            state.winner = myOnlineSide;
+            showVictory(myOnlineSide, true);
+            log('🏳️ 对手未重连，你获胜！', 'info');
+          }
+        }, 60_000);
+      }
+      break;
+  }
+}
+
+// ==================== 联机状态同步 ====================
+// 发送当前游戏状态给对手（隐藏己方手牌/牌库）
+function onlineSendState() {
+  if (!state || state.mode !== 'online') return;
+  if (!wsConn || wsConn.readyState !== WebSocket.OPEN) return;
+  if (isApplyingRemote) return; // 接收中不回发，防止回环
+
+  const copy = JSON.parse(JSON.stringify(state));
+  // 隐藏己方手牌（替换为 null 数组，保留长度信息）
+  copy[myOnlineSide].hand = copy[myOnlineSide].hand.map(() => '__hidden__');
+  // 隐藏己方牌库（替换为长度数字）
+  if (Array.isArray(copy[myOnlineSide].deck)) {
+    copy[myOnlineSide].deck = copy[myOnlineSide].deck.length;
+  }
+  // 清除本地 UI 状态（对手不需要知道我选中了什么）
+  copy.selectedCardIdx = null;
+  copy.selectedAdvance = null;
+  copy.selectedBlockade = false;
+  // _startTurnDone 标记只在初始状态发送时有效，其他时候不传递
+  // （已在 onReceiveState 里消耗，这里额外清理防止意外）
+
+  wsSend({ type: 'state', state: copy });
+}
+
+// 接收对手发来的状态并应用
+function onReceiveState(received) {
+  if (!received) return;
+
+  isApplyingRemote = true;
+
+  // 保存本地手牌和牌库（不被对手的隐藏数据覆盖）
+  // 关键：state 为 null（初次接收）时，不要用空数组覆盖对手发来的实际手牌
+  const hasSavedHand = state && Array.isArray(state[myOnlineSide].hand) && state[myOnlineSide].hand.length > 0;
+  const savedHand = hasSavedHand ? [...state[myOnlineSide].hand] : null;
+  const savedDeck = state && Array.isArray(state[myOnlineSide].deck) ? [...state[myOnlineSide].deck] : null;
+
+  state = received;
+
+  // 只有当本地有实际手牌时才恢复（否则保留对手发来的实际数据）
+  if (savedHand !== null) {
+    state[myOnlineSide].hand = savedHand;
+  }
+  if (savedDeck !== null) {
+    state[myOnlineSide].deck = savedDeck;
+  }
+
+  isApplyingRemote = false;
+
+  if (state.phase === 'ended') {
+    const winner = state.winner || opp(myOnlineSide);
+    showVictory(winner, false);
+    render();
+    return;
+  }
+
+  // 若轮到我行动，调用 startTurn 以补充 K 值、抽牌，然后同步状态给对手
+  if (state.turn === myOnlineSide && state.phase === 'main') {
+    if (state._startTurnDone) {
+      // 本回合的 startTurn 已由对手（房主）执行过，只需 render
+      state._startTurnDone = false; // 消耗标记
+      render();
+      log(`━━ 你的回合！第 ${state.round} 回合 ━━`, 'warn');
+    } else {
+      // 正常情况：对手结束回合后，我方需要自己执行 startTurn（补K、抽牌）
+      startTurn(myOnlineSide); // 内部会 render
+      // 发送更新后的状态给对手（包含我方新 K 值和手牌数量）
+      setTimeout(() => onlineSendState(), 50);
+      log(`━━ 你的回合！第 ${state.round} 回合 ━━`, 'warn');
+    }
+  } else {
+    render();
+  }
+}
+
+// ==================== 游戏模式入口 ====================
+function startGame(mode) {
+  document.getElementById('startOverlay').classList.remove('show');
+  soundManager.init();
+  newGame(mode);
+}
+
+function newGame(mode) {
+  const firstPlayer = Math.random() < 0.5 ? 'player' : 'ai';
+  state = {
+    mode: mode || 'ai',
+    round: 1,
+    turn: firstPlayer,
+    firstPlayer: firstPlayer,
+    phase: 'main',
+    selectedCardIdx: null,
+    selectedAdvance: null,
+    selectedBlockade: false,
+    ewarfare: { player: false, ai: false },
+    blockaded: { player: [], ai: [] },
+    k: { player: {cur: 0, max: 0}, ai: {cur: 0, max: 0} },
+    player: {
+      hand: [],
+      deck: shuffle([...PLAYER_DECK]),
+      support: [null, null, null, null, null],
+      frontline: Array(FRONTLINE_SIZE).fill(null),
+      hq: { hp: 20, maxHp: 20, name: '055A 旗舰', shield: 0 }
+    },
+    ai: {
+      hand: [],
+      deck: shuffle([...AI_DECK]),
+      support: [null, null, null, null, null],
+      frontline: Array(FRONTLINE_SIZE).fill(null),
+      hq: { hp: 20, maxHp: 20, name: '福特级航母', shield: 0 }
+    }
+  };
+  state.player.support[HQ_SLOT] = makeHQ('player');
+  state.ai.support[HQ_SLOT] = makeHQ('ai');
+
+  // 初始手牌：先手4张，后手5张
+  const initFirst = firstPlayer === 'player' ? 4 : 5;
+  const initSecond = firstPlayer === 'player' ? 5 : 4;
+  for (let i = 0; i < initFirst; i++) drawTo(firstPlayer);
+  for (let i = 0; i < initSecond; i++) drawTo(opp(firstPlayer));
+
+  log(`🎴 对局开始：${playerName(firstPlayer)} 先手`, 'info');
+
+  if (mode === 'online') {
+    // 联机模式：房主（player阵营）负责创建初始状态并发送
+    // 无论先手是谁，房主都调用 startTurn 完成初始化（K值、抽牌）
+    startTurn(firstPlayer);
+    // 标记：此状态的 startTurn 已由房主执行，加入者收到后不重复执行
+    state._startTurnDone = true;
+    // 发送初始状态给加入者
+    setTimeout(() => onlineSendState(), 100);
+    return;
+  }
+
+  if (mode === 'pvp' && firstPlayer === 'ai') {
+    // 热座：先手是 player2（ai阵营），需要先交接
+    showPass('player');
+  } else {
+    startTurn(firstPlayer);
+  }
+}
+
+function makeHQ(who) {
+  const side = state[who];
+  return {
+    isHQ: true,
+    owner: who,
+    name: side.hq.name,
+    icon: who === 'player' ? '🚢' : '⛴️',
+    currentHp: side.hq.hp,
+    hp: side.hq.maxHp
+  };
+}
+
+// ==================== 回合流程 ====================
+function startTurn(who) {
+  if (state.k[who].max < 12) state.k[who].max += 1;
+  state.k[who].cur = state.k[who].max;
+  state.ewarfare[who] = false;
+  state.blockaded[who] = [];
+  log(`🟡 ${playerName(who)} 指挥点 K = ${state.k[who].cur}/${state.k[who].max}`, 'info');
+
+  const isFirstRound = state.round === 1;
+  const isFirstPlayer = state.firstPlayer === who;
+  if (!(isFirstRound && isFirstPlayer)) {
+    drawTo(who);
+    log('📥 抽 1 张牌', 'info');
+  } else {
+    log('📥 先手第一回合不抽牌', 'info');
+  }
+
+  log(`━━ 第 ${state.round} 回合 · ${playerName(who)} 行动阶段 ━━`, 'warn');
+
+  // 人机模式下自动执行 AI 回合
+  if (who === 'ai' && state.mode === 'ai') setTimeout(aiTurn, 800);
+  render();
+}
+
+// 全局 endTurn（玩家点"结束回合"时调用）
+function endTurn() {
+  if (!canAct()) return;
+  if (state.phase !== 'main') return;
+  if (checkVictory()) return;
+
+  resetExhausted();
+  state.selectedCardIdx = null;
+  state.selectedAdvance = null;
+  state.selectedBlockade = false;
+
+  const next = opp(state.turn);
+  state.turn = next;
+  if (next === 'player') state.round += 1;
+
+  if (state.mode === 'online') {
+    // 联机：发送状态给对手，对手收到后自行 render
+    onlineSendState();
+    render(); // 本地渲染"等待对手"状态
+  } else if (state.mode === 'pvp') {
+    showPass(next);
+  } else {
+    // 人机
+    if (next === 'ai') {
+      log(`━━ ${playerName('ai')} 回合开始 ━━`, 'warn');
+      startTurn('ai');
+    } else {
+      log(`━━ ${playerName('player')} 回合开始（第 ${state.round} 回合）━━`, 'warn');
+      startTurn('player');
+    }
+  }
+}
+
+// AI 专用结束回合（内部调用，不用全局 endTurn 以避免权限检查干扰）
+function aiFinishTurn() {
+  if (state.phase === 'ended' || state.turn !== 'ai') return;
+  resetExhausted();
+  state.selectedCardIdx = null;
+  state.selectedAdvance = null;
+  state.selectedBlockade = false;
+  state.turn = 'player';
+  state.round += 1;
+  log(`━━ ${playerName('player')} 回合开始（第 ${state.round} 回合）━━`, 'warn');
+  startTurn('player');
+}
+
+// 热座交接画面
+function showPass(nextPlayer) {
+  document.getElementById('passTitle').textContent = `请将设备交给 ${playerName(nextPlayer)}`;
+  document.getElementById('passIcon').textContent = nextPlayer === 'player' ? '🟢' : '🔴';
+  document.getElementById('passOverlay').classList.add('show');
+}
+
+function confirmPass() {
+  document.getElementById('passOverlay').classList.remove('show');
+  startTurn(state.turn);
+}
+
+function resetExhausted() {
+  ['player', 'ai'].forEach(who => {
+    state[who].support.forEach(u => { if (u) u.exhausted = false; });
+    state[who].frontline.forEach(u => { if (u) u.exhausted = false; });
+  });
+}
+
+// ==================== 卡牌管理 ====================
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function drawTo(who) {
+  if (state[who].hand.length >= 9) {
+    log(`✋ ${playerName(who)} 手牌已满（9），不抽`, 'damage');
+    return;
+  }
+  if (state[who].deck.length === 0) {
+    const fatigue = (state[who]._fatigue || 0) + 1;
+    state[who]._fatigue = fatigue;
+    state[who].hq.hp -= fatigue;
+    log(`💢 ${playerName(who)} 牌库抽空！疲劳伤害 ${fatigue}`, 'damage');
+    checkVictory();
+    return;
+  }
+  const cardId = state[who].deck.shift();
+  state[who].hand.push(cardId);
+}
+
+// ==================== 玩家操作 ====================
+function selectHand(idx) {
+  if (!canAct()) return;
+  const me = getViewSide();
+
+  const cardId = state[me].hand[idx];
+  if (!cardId) return;
+  const def = CARDS[cardId];
+  if (!def) return;
+
+  if (state.k[me].cur < def.cost.deploy) {
+    log(`❌ K 不足（需 ${def.cost.deploy}，剩 ${state.k[me].cur}）`, 'damage');
+    soundManager.play('error');
+    return;
+  }
+  if (def.type === 'op') {
+    playOpCard(idx, me);
+    if (def.id !== 'c_blockade') onlineSendState();
+    return;
+  }
+  if (state.selectedCardIdx === idx) {
+    state.selectedCardIdx = null;
+  } else {
+    state.selectedCardIdx = idx;
+    state.selectedAdvance = null;
+    soundManager.play('click');
+  }
+  render();
+}
+
+function playOpCard(idx, who) {
+  const cardId = state[who].hand[idx];
+  const def = CARDS[cardId];
+  if (!def) return;
+  state.k[who].cur -= def.cost.deploy;
+  state[who].hand.splice(idx, 1);
+  soundManager.play('magic');
+  const enemy = opp(who);
+
+  switch (def.id) {
+    case 'c_shield': {
+      state[who].hq.hp += 5;
+      state[who].hq.shield = (state[who].hq.shield || 0) + 5;
+      log(`🛡️ ${def.name}：${playerName(who)} HQ +5 HP（现 ${state[who].hq.hp}）`, 'heal');
+      break;
+    }
+    case 'c_ewarfare': {
+      state.ewarfare[enemy] = true;
+      log(`📡 ${def.name}：${playerName(enemy)}飞机本回合 ATK 减半`, 'info');
+      break;
+    }
+    case 'c_intel':
+    case 'l_intel': {
+      for (let i = 0; i < 2; i++) drawTo(who);
+      log(`🔍 ${def.name}：抽 2 张牌`, 'info');
+      break;
+    }
+    case 'c_repair':
+    case 'l_repair':
+    case 'l_aegis': {
+      let count = 0;
+      const targets = [...state[who].support.filter(u => u && !u.isHQ), ...state[who].frontline.filter(Boolean)];
+      targets.forEach(u => { if (u && u.type === 'surface') { u.currentHp = Math.min(u.currentHp + 1, u.hp); count++; } });
+      log(`🔧 ${def.name}：${count} 个水面单位 +1 HP`, 'heal');
+      break;
+    }
+    case 'c_bombard':
+    case 'l_bombard': {
+      let count = 0;
+      state[enemy].support.forEach(u => { if (u && !u.isHQ) { u.currentHp -= 1; count++; } });
+      state[enemy].frontline.forEach(u => { if (u) { u.currentHp -= 1; count++; } });
+      state[enemy].support = state[enemy].support.map(u => (u && !u.isHQ && u.currentHp <= 0) ? null : u);
+      state[enemy].frontline = state[enemy].frontline.map(u => (u && u.currentHp <= 0) ? null : u);
+      log(`💣 ${def.name}：${playerName(enemy)} ${count} 个单位 -1 HP`, 'damage');
+      checkVictory();
+      break;
+    }
+    case 'c_mobilize': {
+      const add = Math.min(3, state.k[who].max - state.k[who].cur);
+      state.k[who].cur += add;
+      log(`📈 ${def.name}：K +${add}（现 ${state.k[who].cur}/${state.k[who].max}）`, 'heal');
+      break;
+    }
+    case 'c_blockade': {
+      state.selectedBlockade = true;
+      state.selectedCardIdx = null;
+      log(`🚧 ${def.name}：请选敌方一个单位`, 'warn');
+      break;
+    }
+    case 'l_csg': {
+      const f35a = { ...CARDS.l_f35c, instanceId: Math.random().toString(36).substr(2,9), currentHp: CARDS.l_f35c.hp, owner: who, exhausted: true };
+      const f35b = { ...CARDS.l_f35c, instanceId: Math.random().toString(36).substr(2,9), currentHp: CARDS.l_f35c.hp, owner: who, exhausted: true };
+      let placed = 0;
+      for (let i = 0; i < FRONTLINE_SIZE && placed < 2; i++) {
+        if (i !== HQ_SLOT && !state[who].support[i]) {
+          state[who].support[i] = placed === 0 ? f35a : f35b;
+          placed++;
+        }
+      }
+      log(`✈️ ${def.name}：召唤 2 架 F-35C 到 ${playerName(who)}支援线`, 'heal');
+      break;
+    }
+  }
+  render();
+}
+
+function clickSlot(line, idx, who) {
+  if (!canAct()) return;
+  const me = getViewSide();
+  const foe = opp(me);
+
+  // 1) 封锁目标模式
+  if (state.selectedBlockade) {
+    if ((line === 'support' || line === 'front') && who === foe) {
+      const target = line === 'support' ? state[foe].support[idx] : state[foe].frontline[idx];
+      if (target && !target.isHQ) {
+        state.blockaded[foe].push(target.instanceId);
+        state.selectedBlockade = false;
+        log(`🚧 ${target.name} 被海上封锁！下回合不能攻击`, 'info');
+        render();
+        onlineSendState();
+        return;
+      }
+    } else {
+      log('❌ 请选敌方一个单位', 'damage');
+    }
+    return;
+  }
+
+  // 2) 选中手牌 → 部署
+  if (state.selectedCardIdx !== null) {
+    if (line === 'support' && who === me) {
+      if (idx === HQ_SLOT) { log('❌ HQ 位置不能部署', 'damage'); return; }
+      if (state[me].support[idx]) { log('❌ 该位置已有单位', 'damage'); return; }
+      const cardId = state[me].hand[state.selectedCardIdx];
+      const def = CARDS[cardId];
+      if (!def) { state.selectedCardIdx = null; render(); return; }
+      const unit = { ...def, instanceId: Math.random().toString(36).substr(2,9), currentHp: def.hp, owner: me, exhausted: false };
+      state[me].support[idx] = unit;
+      state.k[me].cur -= def.cost.deploy;
+      state[me].hand.splice(state.selectedCardIdx, 1);
+      state.selectedCardIdx = null;
+      soundManager.play('deploy');
+      log(`✅ 部署 ${unit.icon}${unit.name} 到支援线（-K${def.cost.deploy}）`, 'heal');
+      render();
+      onlineSendState();
+      return;
+    }
+    if (line === 'front' && who === me) {
+      if (state[me].frontline[idx]) { log('❌ 前线该位置已有单位', 'damage'); return; }
+      if (state[foe].frontline.filter(Boolean).length > 0) {
+        log('🔒 敌方前线有单位，需先清空才能部署到前线', 'damage');
+        return;
+      }
+      const cardId = state[me].hand[state.selectedCardIdx];
+      const def = CARDS[cardId];
+      if (!def) { state.selectedCardIdx = null; render(); return; }
+      const unit = { ...def, instanceId: Math.random().toString(36).substr(2,9), currentHp: def.hp, owner: me, exhausted: false };
+      state[me].frontline[idx] = unit;
+      state.k[me].cur -= def.cost.deploy;
+      state[me].hand.splice(state.selectedCardIdx, 1);
+      state.selectedCardIdx = null;
+      soundManager.play('deploy');
+      log(`✅ 部署 ${unit.icon}${unit.name} 到前线（-K${def.cost.deploy}）`, 'heal');
+      render();
+      onlineSendState();
+      return;
+    }
+    log('❌ 请点己方支援线或前线空格', 'damage');
+    return;
+  }
+
+  // 3) 点己方支援线单位 → 进入攻击模式
+  if (line === 'support' && who === me) {
+    const unit = state[me].support[idx];
+    if (!unit || unit.isHQ) return;
+    if (unit.exhausted) { log(`⚠️ ${unit.name} 本回合已行动`, 'warn'); return; }
+    if (unit.atk === 0) { log(`⚠️ ${unit.name} 不能攻击`, 'warn'); return; }
+    if (state.blockaded[me].includes(unit.instanceId)) { log(`🚧 ${unit.name} 被封锁`, 'warn'); return; }
+    state.selectedAdvance = { line: 'support', idx, mode: 'attack' };
+    soundManager.play('click');
+    log(`🎯 ${unit.name}：点敌方单位攻击`, 'warn');
+    render();
+    return;
+  }
+
+  // 4) 已选定攻击者 → 处理目标/推进
+  if (state.selectedAdvance && state.selectedAdvance.mode === 'attack') {
+    const atk = state.selectedAdvance.line === 'support'
+      ? state[me].support[state.selectedAdvance.idx]
+      : state[me].frontline[state.selectedAdvance.idx];
+    if (!atk) { state.selectedAdvance = null; render(); return; }
+
+    // 攻击目标
+    let target = null;
+    if (line === 'front' && who === foe) target = state[foe].frontline[idx];
+    else if (line === 'support' && who === foe) target = state[foe].support[idx];
+
+    if (target) {
+      doAttack(atk, target, me, foe);
+      state.selectedAdvance = null;
+      render();
+      onlineSendState();
+      return;
+    }
+
+    // 水面舰推进到前线
+    if (line === 'front' && who === me && atk.type === 'surface') {
+      if (state[me].frontline[idx]) { log('❌ 前线该位置已有我方单位', 'damage'); return; }
+      if (state.k[me].cur < atk.cost.deploy) { log('❌ K 不足', 'damage'); return; }
+      if (state[foe].frontline.filter(Boolean).length > 0) { log('🔒 敌方前线有单位', 'damage'); return; }
+      state[me].support[state.selectedAdvance.idx] = null;
+      state[me].frontline[idx] = atk;
+      state.k[me].cur -= atk.cost.deploy;
+      atk.exhausted = true;
+      soundManager.play('deploy');
+      log(`⚓ ${atk.name} 推进到前线[${idx}]（-K${atk.cost.deploy}）`, 'info');
+      state.selectedAdvance = null;
+      render();
+      onlineSendState();
+      return;
+    }
+    return;
+  }
+
+  // 5) 点己方前线单位 → 进入攻击模式
+  if (line === 'front' && who === me) {
+    const attacker = state[me].frontline[idx];
+    if (!attacker) return;
+    if (attacker.exhausted) { log(`⚠️ ${attacker.name} 本回合已行动`, 'warn'); return; }
+    if (attacker.atk === 0) { log(`⚠️ ${attacker.name} 不能攻击`, 'warn'); return; }
+    state.selectedAdvance = { line: 'front', idx, mode: 'attack' };
+    soundManager.play('click');
+    log(`🎯 ${attacker.name}（前线）：点敌方单位攻击`, 'warn');
+    render();
+    return;
+  }
+}
+
+function canPushFront(who) {
+  if (state[who].frontline.filter(Boolean).length >= FRONTLINE_SIZE) return false;
+  if (state[opp(who)].frontline.filter(Boolean).length > 0) return false;
+  return true;
+}
+
+function doAttack(attacker, target, atkWho, tgtWho) {
+  if (state.blockaded[atkWho].includes(attacker.instanceId)) {
+    log(`🚧 ${attacker.name} 被封锁，无法攻击`, 'warn');
+    return;
+  }
+  let atkVal = attacker.atk;
+  if (attacker.type === 'air' && state.ewarfare[atkWho]) {
+    atkVal = Math.ceil(atkVal / 2);
+    log(`📡 ${attacker.name} 受电子干扰，ATK 减半`, 'info');
+  }
+  target.currentHp -= atkVal;
+  if (target.isHQ) state[tgtWho].hq.hp = Math.max(0, target.currentHp);
+  soundManager.play('attack');
+  const srcLine = state[atkWho].frontline.includes(attacker) ? '前线' : '支援线';
+  log(`⚔ ${attacker.icon}${attacker.name}（${srcLine}）→ ${target.icon}${target.name}（-${atkVal} HP）`, 'damage');
+
+  if (target.atk > 0) {
+    let retVal = target.atk;
+    if (target.type === 'air' && state.ewarfare[tgtWho]) retVal = Math.ceil(retVal / 2);
+    attacker.currentHp -= retVal;
+    if (attacker.isHQ) state[atkWho].hq.hp = Math.max(0, attacker.currentHp);
+    log(`🔄 ${target.name} 反击（-${retVal} HP）`, 'damage');
+  }
+
+  if (target.currentHp <= 0) {
+    state[tgtWho].frontline = state[tgtWho].frontline.map(u => (u && u.instanceId === target.instanceId) ? null : u);
+    state[tgtWho].support = state[tgtWho].support.map(u => (u && u.instanceId === target.instanceId) ? null : u);
+    log(`💀 ${target.icon}${target.name} 被摧毁`, 'damage');
+    soundManager.play('explosion');
+  }
+  if (attacker.currentHp <= 0) {
+    state[atkWho].frontline = state[atkWho].frontline.map(u => (u && u.instanceId === attacker.instanceId) ? null : u);
+    state[atkWho].support = state[atkWho].support.map(u => (u && u.instanceId === attacker.instanceId) ? null : u);
+    log(`💀 ${attacker.icon}${attacker.name} 被摧毁`, 'damage');
+    soundManager.play('explosion');
+  }
+  if (attacker.currentHp > 0) attacker.exhausted = true;
+  checkVictory();
+  render();
+}
+
+// ==================== AI（仅人机模式）====================
+function aiTurn() {
+  if (state.turn !== 'ai' || state.phase !== 'main' || state.mode !== 'ai') return;
+  let safety = 0;
+  let finished = false;
+
+  function doFinish() {
+    if (finished) return;
+    finished = true;
+    if (state.turn === 'ai' && state.phase === 'main') aiFinishTurn();
+  }
+
+  const forceTimer = setTimeout(doFinish, 10000);
+
+  try {
+    while (safety++ < 30) {
+      const actions = [];
+      try {
+        state.ai.hand.forEach((cid, idx) => {
+          const def = CARDS[cid];
+          if (def && def.type === 'op' && state.k.ai.cur >= def.cost.deploy && Math.random() < 0.3) {
+            actions.push({ type: 'op', idx });
+          }
+        });
+        state.ai.hand.forEach((cid, idx) => {
+          const def = CARDS[cid];
+          if (def && def.type !== 'op' && state.k.ai.cur >= def.cost.deploy) {
+            for (let i = 0; i < FRONTLINE_SIZE; i++) {
+              if (i !== HQ_SLOT && !state.ai.support[i]) {
+                actions.push({ type: 'deploy', idx, slot: i });
+                break;
+              }
+            }
+          }
+        });
+        if (canPushFront('ai')) {
+          state.ai.support.forEach((u, idx) => {
+            if (u && !u.isHQ && !u.exhausted && state.k.ai.cur >= u.cost.deploy) {
+              const emptyIdx = state.ai.frontline.findIndex(s => !s);
+              if (emptyIdx !== -1) actions.push({ type: 'advance', idx, slot: emptyIdx });
+            }
+          });
+        }
+        state.ai.frontline.forEach((u, idx) => {
+          if (u && !u.exhausted && u.atk > 0 && !state.blockaded.ai.includes(u.instanceId)) {
+            state.player.frontline.forEach((t, tIdx) => { if (t) actions.push({ type: 'attack', from: idx, to: tIdx, fromLine: 'front', targetLine: 'front' }); });
+            state.player.support.forEach((t, tIdx) => { if (t) actions.push({ type: 'attack', from: idx, to: tIdx, fromLine: 'front', targetLine: 'support' }); });
+          }
+        });
+        state.ai.support.forEach((u, idx) => {
+          if (u && !u.isHQ && !u.exhausted && u.atk > 0 && !state.blockaded.ai.includes(u.instanceId)) {
+            state.player.frontline.forEach((t, tIdx) => { if (t) actions.push({ type: 'attack', from: idx, to: tIdx, fromLine: 'support', targetLine: 'front' }); });
+            state.player.support.forEach((t, tIdx) => { if (t) actions.push({ type: 'attack', from: idx, to: tIdx, fromLine: 'support', targetLine: 'support' }); });
+          }
+        });
+      } catch(e) { console.error('AI 构建动作出错:', e); }
+
+      if (actions.length === 0) break;
+      const act = actions[Math.floor(Math.random() * actions.length)];
+      if (!act) break;
+
+      try {
+        if (act.type === 'op') {
+          const def = CARDS[state.ai.hand[act.idx]];
+          if (def) playOpCard(act.idx, 'ai');
+        } else if (act.type === 'deploy') {
+          const def = CARDS[state.ai.hand[act.idx]];
+          if (def) {
+            const unit = { ...def, instanceId: Math.random().toString(36).substr(2,9), currentHp: def.hp, owner: 'ai', exhausted: false };
+            state.ai.support[act.slot] = unit;
+            state.k.ai.cur -= def.cost.deploy;
+            state.ai.hand.splice(act.idx, 1);
+          }
+        } else if (act.type === 'advance') {
+          const u = state.ai.support[act.idx];
+          if (u) {
+            state.ai.support[act.idx] = null;
+            state.ai.frontline[act.slot] = u;
+            state.k.ai.cur -= u.cost.deploy;
+            u.exhausted = true;
+          }
+        } else if (act.type === 'attack') {
+          const atk = act.fromLine === 'front' ? state.ai.frontline[act.from] : state.ai.support[act.from];
+          const tgt = act.targetLine === 'front' ? state.player.frontline[act.to] : state.player.support[act.to];
+          if (atk && tgt) {
+            doAttack(atk, tgt, 'ai', 'player');
+            clearTimeout(forceTimer);
+            break; // 每次只攻击一次
+          }
+        }
+      } catch(e) { console.error('AI 执行动作出错:', e); }
+    }
+  } catch(e) {
+    console.error('AI 回合异常:', e);
+  } finally {
+    clearTimeout(forceTimer);
+    setTimeout(doFinish, 400);
+  }
+}
+
+// ==================== 胜负 ====================
+function checkVictory() {
+  if (state.player.hq.hp <= 0) {
+    state.phase = 'ended';
+    state.winner = 'ai';
+    showVictory('ai', false);
+    if (state.mode === 'online') onlineSendState();
+    return true;
+  }
+  if (state.ai.hq.hp <= 0) {
+    state.phase = 'ended';
+    state.winner = 'player';
+    showVictory('player', false);
+    if (state.mode === 'online') onlineSendState();
+    return true;
+  }
+  return false;
+}
+
+function showVictory(winner, opponentLeft) {
+  state.phase = 'ended';
+  let title, text;
+  if (state.mode === 'online') {
+    if (winner === myOnlineSide) {
+      title = '🏆 你赢了！';
+      text = opponentLeft ? '对手已离开' : `${playerName(opp(winner))}旗舰已被击沉！`;
+    } else {
+      title = '💀 你输了！';
+      text = '你的旗舰已被击沉！';
+    }
+  } else {
+    title = `🏆 ${playerName(winner)} 胜利！`;
+    text = `${playerName(opp(winner))}旗舰已被击沉！`;
+  }
+  document.getElementById('victoryTitle').textContent = title;
+  document.getElementById('victoryText').textContent = text;
+  document.getElementById('victoryOverlay').classList.add('show');
+  soundManager.play(winner === 'player' ? 'victory' : 'defeat');
+}
+
+function restartGame() { location.reload(); }
+
+// ==================== 日志 ====================
+function log(msg, kind='') {
+  const el = document.getElementById('log');
+  const entry = document.createElement('div');
+  entry.className = 'entry ' + kind;
+  entry.textContent = msg;
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ==================== 渲染 ====================
+function render() {
+  if (!state) return;
+  syncHQ('player');
+  syncHQ('ai');
+  const me = getViewSide();
+  const foe = opp(me);
+
+  document.getElementById('hqP').textContent = state.player.hq.hp;
+  document.getElementById('hqA').textContent = state.ai.hq.hp;
+  document.getElementById('hqPName').textContent = playerName('player');
+  document.getElementById('hqAName').textContent = playerName('ai');
+  document.getElementById('resK').textContent = state.k[me].cur;
+  document.getElementById('resKMax').textContent = state.k[me].max;
+
+  // 回合信息
+  let phaseText;
+  if (state.phase === 'ended') {
+    phaseText = '已结束';
+  } else if (state.mode === 'online' && state.turn !== myOnlineSide) {
+    phaseText = '⏳ 等待对手操作...';
+  } else {
+    phaseText = `${playerName(me)} 行动阶段`;
+  }
+  document.getElementById('roundText').textContent = `第 ${state.round} 回合 · ${phaseText}`;
+
+  // 联机网络点
+  if (state.mode === 'online') {
+    document.getElementById('netDot').style.display = 'inline-block';
+    updateNetDot(wsConn && wsConn.readyState === WebSocket.OPEN ? 'on' : 'off');
+  } else {
+    document.getElementById('netDot').style.display = 'none';
+  }
+
+  // 结束回合按钮
+  const endBtn = document.getElementById('endBtn');
+  endBtn.disabled = !canAct();
+  if (state.mode === 'online' && state.turn !== myOnlineSide && state.phase === 'main') {
+    endBtn.textContent = '⏳ 等待对手...';
+  } else {
+    endBtn.textContent = '⏭️ 结束回合';
+  }
+
+  document.getElementById('enemyLabel').textContent = `▼ ${playerName(foe)}支援阵线 · HQ 在中`;
+  document.getElementById('playerLabel').textContent = `▲ ${playerName(me)}支援阵线 · HQ 在中`;
+  document.getElementById('handOwner').textContent = playerName(me);
+
+  const fl = document.getElementById('frontline');
+  fl.classList.toggle('contested',
+    state.player.frontline.filter(Boolean).length > 0 &&
+    state.ai.frontline.filter(Boolean).length > 0
+  );
+
+  renderSupport('enemySupport', state[foe].support, foe, me);
+  renderFront('frontline', me, foe);
+  renderSupport('playerSupport', state[me].support, me, foe);
+  renderHand(me);
+}
+
+function syncHQ(who) {
+  const hqSlot = state[who].support[HQ_SLOT];
+  if (hqSlot && hqSlot.isHQ) hqSlot.currentHp = state[who].hq.hp;
+}
+
+function renderSupport(elId, support, who, me) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  const isMySide = (who === me);
+  const isAttackMode = state.selectedAdvance && state.selectedAdvance.mode === 'attack';
+
+  for (let i = 0; i < FRONTLINE_SIZE; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    const u = support[i];
+    if (i === HQ_SLOT || (u && u.isHQ)) {
+      slot.appendChild(makeHQCard(support[i]));
+      if (isAttackMode && !isMySide) slot.classList.add('target');
+    } else if (u) {
+      slot.appendChild(makeCard(u, !isMySide));
+      if (state.selectedBlockade && !isMySide) slot.classList.add('target');
+      if (isAttackMode && !isMySide) slot.classList.add('target');
+    } else {
+      slot.classList.add('empty');
+      if (state.selectedCardIdx !== null && isMySide) slot.classList.add('highlight');
+    }
+    slot.onclick = () => clickSlot('support', i, who);
+    el.appendChild(slot);
+  }
+}
+
+function renderFront(elId, me, foe) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  const slots = Array(FRONTLINE_SIZE).fill(null).map(() => ({ me: null, foe: null }));
+  state[me].frontline.forEach((u, i) => { if (i < FRONTLINE_SIZE && u) slots[i].me = u; });
+  state[foe].frontline.forEach((u, i) => { if (i < FRONTLINE_SIZE && u) slots[i].foe = u; });
+  const isAttackMode = state.selectedAdvance && state.selectedAdvance.mode === 'attack';
+
+  for (let i = 0; i < FRONTLINE_SIZE; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    const data = slots[i];
+    if (data.me) {
+      slot.appendChild(makeCard(data.me, false));
+    } else if (data.foe) {
+      slot.appendChild(makeCard(data.foe, true));
+      if (isAttackMode) slot.classList.add('target');
+    } else {
+      slot.classList.add('empty');
+      if (state.selectedCardIdx !== null) slot.classList.add('highlight');
+      if (isAttackMode) {
+        const sel = state.selectedAdvance;
+        const atkUnit = state[me][sel.line] && state[me][sel.line][sel.idx];
+        if (atkUnit && atkUnit.type === 'surface') slot.classList.add('highlight');
+      }
+    }
+    const slotWho = data.me ? me : (data.foe ? foe : me);
+    slot.onclick = () => clickSlot('front', i, slotWho);
+    el.appendChild(slot);
+  }
+}
+
+function makeCard(unit, isEnemy) {
+  const card = document.createElement('div');
+  const def = CARDS[unit.id];
+  const isOp = unit.type === 'op';
+  let cls = `card t-${unit.type}`;
+  if (unit.exhausted) cls += ' exhausted';
+  if (state.ewarfare[unit.owner] && unit.type === 'air') cls += ' ewarfare';
+  cls += isEnemy ? ' enemy-unit' : ' ally-unit';
+  card.className = cls;
+
+  if (isOp) {
+    card.innerHTML = `<div class="icon">${unit.icon}</div><div class="name">${unit.name}</div><div class="stats" style="color:var(--accent-gold)">指令</div>`;
+    return card;
+  }
+  const hpPct = Math.max(0, Math.round(unit.currentHp / unit.hp * 100));
+  const hpColor = isEnemy
+    ? (hpPct > 60 ? '#ff6666' : hpPct > 25 ? '#ffaa44' : '#ff3333')
+    : (hpPct > 60 ? '#88dd99' : hpPct > 25 ? '#ffaa44' : '#ff4444');
+  const costDef = def ? def.cost.deploy : unit.cost.deploy;
+  card.innerHTML = `
+    <div class="card-top">
+      <span class="k-tag">K${costDef}</span>
+      <span class="type-badge">${unit.type === 'surface' ? '海' : unit.type === 'subsurf' ? '潜' : '空'}</span>
+    </div>
+    <div class="icon">${unit.icon}</div>
+    <div class="name">${unit.name}</div>
+    <div class="stats">
+      <span class="atk">⚔${unit.atk}</span>
+      <span class="hp" style="color:${isEnemy ? '#ff7766' : '#88dd99'}">❤${unit.currentHp}/${unit.hp}</span>
+    </div>
+    <div class="hp-bar" style="width:100%;height:3px;background:rgba(0,0,0,.5);border-radius:2px;margin-top:2px;overflow:hidden">
+      <div style="height:100%;background:${hpColor};width:${hpPct}%;transition:width .3s"></div>
+    </div>
+  `;
+  return card;
+}
+
+function makeHQCard(hq) {
+  if (!hq) return document.createElement('div');
+  const card = document.createElement('div');
+  card.className = 'hq-card';
+  const pct = Math.round(hq.currentHp / hq.hp * 100);
+  card.innerHTML = `
+    <div class="hq-icon">${hq.icon}</div>
+    <div class="hq-name">${hq.name}</div>
+    <div class="hq-hp">${hq.currentHp} / ${hq.hp}</div>
+    <div class="hq-bar"><div class="hq-fill" style="width:${pct}%;background:${pct > 60 ? '#88dd99' : pct > 25 ? '#ffaa44' : '#ff4444'}"></div></div>
+    ${hq.shield ? `<div class="shield-buff">🛡️+${hq.shield}</div>` : ''}
+  `;
+  return card;
+}
+
+function renderHand(who) {
+  const hand = document.getElementById('hand');
+  hand.innerHTML = '';
+  document.getElementById('handCount').textContent = `(${state[who].hand.length}/9)`;
+  state[who].hand.forEach((cid, idx) => {
+    const def = CARDS[cid];
+    if (!def) return; // 跳过 '__hidden__' 等占位符
+    const card = document.createElement('div');
+    const affordable = state.k[who].cur >= def.cost.deploy;
+    card.className = `card in-hand t-${def.type} ${state.selectedCardIdx === idx ? 'selected' : ''} ${affordable ? '' : 'too-expensive'}`;
+    if (def.type === 'op') {
+      card.innerHTML = `
+        <div class="card-top">
+          <span class="k-tag">K${def.cost.deploy}</span>
+          <span class="type-badge" style="background:#5a2a8a;color:#ffc966">指令</span>
+        </div>
+        <div class="icon">${def.icon}</div>
+        <div class="name">${def.name}</div>
+        <div class="stats" style="font-size:10px;color:var(--accent-gold);font-weight:normal">${def.desc}</div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="card-top">
+          <span class="k-tag">K${def.cost.deploy}</span>
+          <span class="type-badge">${def.type === 'surface' ? '海' : def.type === 'subsurf' ? '潜' : '空'}</span>
+        </div>
+        <div class="icon">${def.icon}</div>
+        <div class="name">${def.name}</div>
+        <div class="stats">
+          <span class="atk">⚔${def.atk}</span>
+          <span class="hp">❤${def.hp}</span>
+        </div>
+      `;
+    }
+    card.onclick = () => selectHand(idx);
+    hand.appendChild(card);
+  });
+}
+
+document.getElementById('endBtn').onclick = endTurn;
+// 等待开始界面选择，不自动 newGame
+</script>
+</body>
+</html>
