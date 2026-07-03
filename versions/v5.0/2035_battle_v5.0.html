@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2035 大海战 · V5.0 MVP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    background: linear-gradient(135deg, #0a1929 0%, #1e3a5f 100%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 10px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header {
+    text-align: center;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 22px; color: #66ccff; }
+  .badge {
+    display: inline-block; background: #ff6b35; color: #fff;
+    padding: 2px 8px; border-radius: 4px; font-size: 12px;
+    margin-left: 8px; vertical-align: middle;
+  }
+
+  /* 大厅 */
+  #lobby { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; text-align: center; }
+  .lobby-section { margin: 20px 0; }
+  button {
+    background: #2d7dd2; color: #fff; border: none; padding: 10px 20px;
+    border-radius: 6px; font-size: 14px; cursor: pointer; margin: 4px;
+  }
+  button:hover:not(:disabled) { background: #4a96e8; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  input {
+    padding: 10px; border: 1px solid #555; border-radius: 6px;
+    background: #1a2332; color: #fff; font-size: 14px; text-align: center;
+    text-transform: uppercase; letter-spacing: 2px;
+  }
+  #roomCode { font-size: 32px; letter-spacing: 8px; color: #66ccff; padding: 10px; }
+
+  /* 游戏界面 */
+  #game { display: none; }
+  .status-bar {
+    background: rgba(0,0,0,0.3); padding: 10px 16px; border-radius: 8px;
+    margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .status-item { display: flex; gap: 8px; align-items: center; }
+  .status-item strong { color: #66ccff; }
+  .net-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: #888; margin-right: 6px;
+  }
+  .net-dot.on { background: #4caf50; }
+  .net-dot.off { background: #f44336; }
+  .net-dot.wait { background: #ff9800; }
+
+  /* 区域 */
+  .section {
+    background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  /* 槽位 */
+  .line {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    min-height: 90px;
+  }
+  .slot {
+    background: rgba(255,255,255,0.05); border: 2px dashed #555;
+    border-radius: 6px; padding: 6px; text-align: center; font-size: 12px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    min-height: 90px; cursor: pointer; transition: all 0.2s;
+  }
+  .slot.filled { border-style: solid; background: rgba(45,125,210,0.2); }
+  .slot.hq { background: rgba(255,107,53,0.3); border-color: #ff6b35; }
+  .slot.hq.filled { background: rgba(255,107,53,0.4); }
+  .slot.targetable:hover { background: rgba(76,175,80,0.3); border-color: #4caf50; }
+  .slot-icon { font-size: 22px; }
+  .slot-name { font-size: 11px; margin-top: 2px; }
+  .slot-stats { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+  /* 手牌 */
+  .hand {
+    display: flex; gap: 6px; overflow-x: auto; padding: 8px 0;
+  }
+  .hand-card {
+    min-width: 80px; background: rgba(45,125,210,0.2); border: 2px solid #2d7dd2;
+    border-radius: 6px; padding: 6px; text-align: center; cursor: pointer;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .hand-card:hover { background: rgba(45,125,210,0.4); }
+  .hand-card.selected { background: rgba(76,175,80,0.5); border-color: #4caf50; }
+  .hand-card.unaffordable { opacity: 0.4; cursor: not-allowed; }
+
+  /* 日志 */
+  #log {
+    background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;
+    max-height: 200px; overflow-y: auto; font-size: 12px;
+    font-family: 'Courier New', monospace;
+  }
+  #log .msg { padding: 2px 0; }
+
+  /* 错误 */
+  .error-msg {
+    background: #f44336; color: #fff; padding: 8px; border-radius: 4px;
+    margin: 8px 0; font-size: 13px;
+  }
+  .info-msg {
+    background: rgba(76,175,80,0.2); color: #4caf50; padding: 8px;
+    border-radius: 4px; margin: 8px 0; font-size: 13px;
+  }
+
+  /* 阵营标识 */
+  .faction-tag {
+    font-size: 11px; padding: 2px 6px; border-radius: 3px;
+    background: rgba(102,204,255,0.2); color: #66ccff;
+  }
+
+  /* 胜利 */
+  #victory-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 100; justify-content: center; align-items: center;
+  }
+  #victory-overlay.show { display: flex; }
+  .victory-box {
+    background: linear-gradient(135deg, #2d7dd2, #ff6b35);
+    padding: 40px; border-radius: 12px; text-align: center;
+    box-shadow: 0 0 50px rgba(102,204,255,0.5);
+  }
+  .victory-box h2 { font-size: 36px; color: #fff; margin-bottom: 16px; }
+  .victory-box p { color: rgba(255,255,255,0.9); margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🌊 2035 大海战 <span class="badge">V5.0 MVP</span></h1>
+    <p style="font-size: 12px; color: #888; margin-top: 4px;">
+      服务器权威 · A vs B 平等对战 · Action 协议
+    </p>
+  </header>
+
+  <!-- 大厅 -->
+  <div id="lobby">
+    <div id="lobbyMain" class="lobby-section">
+      <h3>联机大厅</h3>
+      <p style="color: #888; margin: 12px 0;">服务器：A vs B 平等架构（不是 V4.x 的人机特例）</p>
+      <button onclick="createRoom()">创建房间</button>
+      <button onclick="showJoin()">加入房间</button>
+    </div>
+    <div id="lobbyJoin" class="lobby-section" style="display:none;">
+      <h3>加入房间</h3>
+      <input type="text" id="roomInput" maxlength="4" placeholder="房间号" />
+      <button onclick="joinRoom()" id="joinBtn">加入</button>
+      <button onclick="backToMain()">返回</button>
+      <div id="joinStatus" style="margin-top: 10px;"></div>
+    </div>
+    <div id="lobbyWaiting" class="lobby-section" style="display:none;">
+      <h3>等待对手加入…</h3>
+      <p>房间号</p>
+      <div id="roomCode"></div>
+      <button onclick="cancelWait()">取消</button>
+    </div>
+    <div id="lobbyError"></div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div id="game">
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="net-dot" id="netDot"></span>
+        <span id="netStatus">连接中</span>
+      </div>
+      <div class="status-item">
+        <span>第 <strong id="roundNum">1</strong> 回合</span>
+        <span>·</span>
+        <span>当前: <strong id="turnIndicator" style="color:#ff6b35;">—</strong></span>
+        <span>·</span>
+        <span>我方阵营: <span id="mySideTag" class="faction-tag">—</span></span>
+      </div>
+      <div class="status-item">
+        <button id="endTurnBtn" onclick="sendAction({kind:'end_turn'})" disabled>结束回合</button>
+      </div>
+    </div>
+
+    <!-- 敌方支援线 -->
+    <div class="section">
+      <div class="section-title">敌方支援线 <span id="oppFaction"></span></div>
+      <div class="line" id="oppSupport"></div>
+    </div>
+
+    <!-- 双方前线 -->
+    <div class="section">
+      <div class="section-title">前线（中央战场）</div>
+      <div class="line" id="oppFrontline"></div>
+      <div style="height: 8px;"></div>
+      <div class="line" id="myFrontline"></div>
+    </div>
+
+    <!-- 我方支援线 -->
+    <div class="section">
+      <div class="section-title">我方支援线 <span id="myFaction"></span></div>
+      <div class="line" id="mySupport"></div>
+    </div>
+
+    <!-- 我方手牌 -->
+    <div class="section">
+      <div class="section-title">我方手牌</div>
+      <div class="hand" id="myHand"></div>
+      <p style="color:#888; font-size:11px; margin-top:6px;">
+        点击手牌 → 点击支援线空槽位（slot 0/1/3/4，slot 2 是 HQ）
+      </p>
+    </div>
+
+    <!-- 状态信息 -->
+    <div class="section">
+      <div class="section-title">资源 · 状态</div>
+      <div style="display:flex; gap:20px; flex-wrap:wrap;">
+        <div>A K: <strong id="kA">0/0</strong></div>
+        <div>B K: <strong id="kB">0/0</strong></div>
+        <div>A HQ HP: <strong id="hqA">20</strong></div>
+        <div>B HQ HP: <strong id="hqB">20</strong></div>
+        <div>牌库: <span id="deckA">—</span></div>
+      </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="section">
+      <div class="section-title">事件日志</div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <!-- 胜利弹窗 -->
+  <div id="victory-overlay">
+    <div class="victory-box">
+      <h2 id="victoryTitle">🏆 胜利！</h2>
+      <p id="victoryMsg">某方获胜</p>
+      <button onclick="location.reload()">再来一局</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== V5.0 客户端 ====================
+// 核心：客户端只做 3 件事
+// 1. 发 action
+// 2. 收 state 后 render
+// 3. 收事件后显示提示
+
+const CARDS = {
+  c_055:    { id:'c_055',    name:'055 驱逐舰',     faction:'苍龙', type:'surface', cost:{deploy:4}, atk:4, hp:5, icon:'🚢', desc:'相邻友军-1伤' },
+  c_055b:   { id:'c_055b',   name:'055B 改进型',    faction:'苍龙', type:'surface', cost:{deploy:5}, atk:5, hp:6, icon:'⛴️', desc:'中华神盾·改良' },
+  c_fujian: { id:'c_fujian', name:'福建舰',         faction:'苍龙', type:'surface', cost:{deploy:8}, atk:2, hp:8, icon:'🛳️', desc:'友军+1攻' },
+  c_096:    { id:'c_096',    name:'096 核潜艇',     faction:'苍龙', type:'subsurf', cost:{deploy:7}, atk:6, hp:5, icon:'🦈', desc:'深海幽灵' },
+  c_039b:   { id:'c_039b',   name:'039B 常规潜艇',  faction:'苍龙', type:'subsurf', cost:{deploy:4}, atk:4, hp:3, icon:'🐟', desc:'仅需能源' },
+  c_j35:    { id:'c_j35',    name:'歼-35 舰载机',   faction:'苍龙', type:'air',     cost:{deploy:3}, atk:3, hp:2, icon:'✈️', desc:'空中优势' },
+  c_uuv:    { id:'c_uuv',    name:'UUV 蜂群',       faction:'苍龙', type:'subsurf', cost:{deploy:3}, atk:2, hp:2, icon:'🐙', desc:'死亡溅射' },
+  c_drone:  { id:'c_drone',  name:'攻击-11 无人机', faction:'苍龙', type:'air',     cost:{deploy:2}, atk:2, hp:1, icon:'🛸', desc:'消耗品' },
+  c_df21d:  { id:'c_df21d',  name:'东风-21D',       faction:'苍龙', type:'air',     cost:{deploy:6}, atk:8, hp:1, icon:'🚀', desc:'跨线一次性' },
+  c_shield: { id:'c_shield', name:'神盾拦截',       faction:'苍龙', type:'op',      cost:{deploy:4}, atk:0, hp:0, icon:'🛡️', desc:'旗舰+5HP' },
+  c_ewarfare:{id:'c_ewarfare',name:'电子干扰',      faction:'苍龙', type:'op',      cost:{deploy:4}, atk:0, hp:0, icon:'📡', desc:'敌机ATK减半' },
+  c_intel:  { id:'c_intel',  name:'情报侦查',       faction:'苍龙', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🔍', desc:'抽2张' },
+  c_repair: { id:'c_repair', name:'紧急维修',       faction:'苍龙', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🔧', desc:'水面+1HP' },
+  c_bombard:{ id:'c_bombard',name:'战略轰炸',       faction:'苍龙', type:'op',      cost:{deploy:5}, atk:0, hp:0, icon:'💣', desc:'敌方-1HP' },
+  c_mobilize:{id:'c_mobilize',name:'战时动员',      faction:'苍龙', type:'op',      cost:{deploy:4}, atk:0, hp:0, icon:'📈', desc:'K+3' },
+  c_blockade:{id:'c_blockade',name:'海上封锁',      faction:'苍龙', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🚧', desc:'禁攻1回合' },
+  l_burke:  { id:'l_burke',  name:'伯克级驱逐舰',   faction:'利维坦', type:'surface', cost:{deploy:4}, atk:4, hp:5, icon:'🚢', desc:'宙斯盾' },
+  l_tico:   { id:'l_tico',   name:'提康德罗加',     faction:'利维坦', type:'surface', cost:{deploy:5}, atk:4, hp:6, icon:'⛴️', desc:'巡洋舰' },
+  l_ford:   { id:'l_ford',   name:'福特级航母',     faction:'利维坦', type:'surface', cost:{deploy:8}, atk:2, hp:8, icon:'🛳️', desc:'友军+1攻' },
+  l_virgin: { id:'l_virgin', name:'弗吉尼亚核潜艇', faction:'利维坦', type:'subsurf', cost:{deploy:5}, atk:5, hp:4, icon:'🦈', desc:'深海幽灵' },
+  l_seawolf:{ id:'l_seawolf',name:'海狼级核潜艇',   faction:'利维坦', type:'subsurf', cost:{deploy:4}, atk:4, hp:3, icon:'🐟', desc:'仅需能源' },
+  l_f35c:   { id:'l_f35c',   name:'F-35C 舰载机',   faction:'利维坦', type:'air',     cost:{deploy:3}, atk:3, hp:2, icon:'✈️', desc:'首攻+1' },
+  l_mq25:   { id:'l_mq25',   name:'MQ-25 黄貂鱼',   faction:'利维坦', type:'air',     cost:{deploy:2}, atk:2, hp:1, icon:'🛸', desc:'消耗品' },
+  l_tomahawk:{id:'l_tomahawk',name:'战斧巡航导弹',  faction:'利维坦', type:'air',     cost:{deploy:5}, atk:6, hp:1, icon:'🚀', desc:'跨线一次性' },
+  l_aegis:  { id:'l_aegis',  name:'宙斯盾升级',     faction:'利维坦', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🛡️', desc:'水面+1HP' },
+  l_csg:    { id:'l_csg',    name:'航母打击群',     faction:'利维坦', type:'op',      cost:{deploy:6}, atk:0, hp:0, icon:'✈️', desc:'召2 F-35C' },
+  l_repair: { id:'l_repair', name:'损管抢救',       faction:'利维坦', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🔧', desc:'水面+1HP' },
+  l_bombard:{ id:'l_bombard',name:'B-2 隐身轰炸',   faction:'利维坦', type:'op',      cost:{deploy:5}, atk:0, hp:0, icon:'💣', desc:'敌方-1HP' },
+  l_intel:  { id:'l_intel',  name:'卫星侦察',       faction:'利维坦', type:'op',      cost:{deploy:3}, atk:0, hp:0, icon:'🛰️', desc:'抽2张' },
+};
+
+const HQ_SLOT = 2;
+const SUPPORT_SIZE = 5;
+
+// 全局状态（服务器发送的完整 state）
+let gameState = null;
+let mySide = null;        // 'A' | 'B'
+let roomId = null;
+let wsConn = null;
+let selectedCardIdx = null;  // 当前选中的手牌索引（仅 UI 状态）
+
+// WS 地址：统一走 nginx 代理 /v5ws（V5.0 独立路径）
+// 优点：不需暴露 8081 端口、不需配防火墙、支持 HTTPS/WSS
+const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/v5ws';
+
+// ==================== WebSocket ====================
+function wsConnect(onOpen) {
+  if (wsConn) try { wsConn.close(); } catch(e) {}
+  wsConn = new WebSocket(WS_URL);
+  wsConn.onopen = () => {
+    setNetDot('on');
+    if (onOpen) onOpen();
+  };
+  wsConn.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch(err) { return; }
+    if (msg.type === 'pong') return;
+    handleMessage(msg);
+  };
+  wsConn.onclose = () => {
+    setNetDot('off');
+    addLog('⚠️ 网络断开', 'damage');
+  };
+  wsConn.onerror = () => setNetDot('off');
+}
+
+function wsSend(obj) {
+  if (wsConn && wsConn.readyState === WebSocket.OPEN) {
+    wsConn.send(JSON.stringify(obj));
+  }
+}
+
+function setNetDot(status) {
+  const dot = document.getElementById('netDot');
+  dot.className = 'net-dot ' + status;
+  const text = { on: '已连接', off: '已断开', wait: '连接中' }[status];
+  if (text) document.getElementById('netStatus').textContent = text;
+}
+
+// ==================== 消息处理 ====================
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'room_created':
+      roomId = msg.roomId;
+      showWaiting(msg.roomId);
+      break;
+    case 'game_start':
+      mySide = msg.youAre;
+      document.getElementById('mySideTag').textContent = mySide === 'A' ? '苍龙' : '利维坦';
+      showGame();
+      addLog(`🌐 联机开始！我方阵营 ${mySide}`, 'info');
+      break;
+    case 'state':
+      gameState = msg.state;
+      render();
+      break;
+    case 'error':
+      addLog(`❌ ${msg.msg}`, 'damage');
+      break;
+    case 'opponent_left':
+      addLog('⚠️ 对手已断开', 'damage');
+      break;
+    case 'rejoin_ok':
+      addLog('✅ 重连成功', 'info');
+      break;
+  }
+}
+
+// ==================== Action 发送 ====================
+function sendAction(action) {
+  if (!wsConn || wsConn.readyState !== WebSocket.OPEN) {
+    addLog('❌ 未连接到服务器', 'damage');
+    return;
+  }
+  wsSend({ type: 'action', ...action });
+}
+
+// ==================== 渲染 ====================
+function render() {
+  if (!gameState) return;
+  const s = gameState;
+  document.getElementById('roundNum').textContent = s.round;
+  document.getElementById('turnIndicator').textContent = s.turn;
+  document.getElementById('turnIndicator').style.color = s.turn === mySide ? '#4caf50' : '#ff6b35';
+  document.getElementById('endTurnBtn').disabled = !(s.turn === mySide && s.phase === 'main');
+  document.getElementById('kA').textContent = `${s.k.A.cur}/${s.k.A.max}`;
+  document.getElementById('kB').textContent = `${s.k.B.cur}/${s.k.B.max}`;
+  document.getElementById('hqA').textContent = s.A.hq.hp;
+  document.getElementById('hqB').textContent = s.B.hq.hp;
+  document.getElementById('deckA').textContent = Array.isArray(s.A.deck) ? s.A.deck.length : (s.A.deck?.count ?? 0);
+
+  document.getElementById('myFaction').textContent = `(${mySide === 'A' ? '苍龙' : '利维坦'})`;
+  const oppSide = mySide === 'A' ? 'B' : 'A';
+  document.getElementById('oppFaction').textContent = `(${oppSide === 'A' ? '苍龙' : '利维坦'})`;
+
+  // 始终从我的视角渲染（我方在下方，敌方在上方）
+  renderLine('oppSupport', s[oppSide].support, true);
+  renderLine('oppFrontline', s[oppSide].frontline, true);
+  renderLine('myFrontline', s[mySide].frontline, false);
+  renderLine('mySupport', s[mySide].support, false);
+  renderHand(s[mySide].hand, s.k[mySide].cur);
+
+  // 胜负
+  if (s.phase === 'ended') {
+    const won = s.winner === mySide;
+    document.getElementById('victoryTitle').textContent = won ? '🏆 胜利！' : '💀 失败';
+    document.getElementById('victoryMsg').textContent = won ? '恭喜你击败了对手' : '你的 HQ 被击沉';
+    document.getElementById('victory-overlay').classList.add('show');
+  }
+
+  // 日志
+  renderLog(s.log);
+}
+
+function renderLine(elemId, line, isOpponent) {
+  const el = document.getElementById(elemId);
+  el.innerHTML = '';
+  for (let i = 0; i < line.length; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    const inst = line[i];
+    if (i === HQ_SLOT) slot.classList.add('hq');
+    if (inst) {
+      slot.classList.add('filled');
+      slot.innerHTML = `
+        <div class="slot-icon">${inst.icon}</div>
+        <div class="slot-name">${inst.name}</div>
+        <div class="slot-stats">⚔️${inst.atk} ❤️${inst.hp}/${inst.maxHp}</div>
+      `;
+    } else if (i === HQ_SLOT) {
+      slot.innerHTML = `<div class="slot-icon">🏰</div><div class="slot-name">HQ</div>`;
+    } else if (i !== HQ_SLOT && !isOpponent && gameState.turn === mySide) {
+      // 我方支援线空槽 → 可部署
+      slot.style.cursor = 'pointer';
+      slot.onclick = () => onSupportSlotClick(i);
+      if (selectedCardIdx !== null) slot.classList.add('targetable');
+    } else {
+      slot.innerHTML = `<div style="color:#555;">空</div>`;
+    }
+    el.appendChild(slot);
+  }
+}
+
+function renderHand(hand, myK) {
+  const el = document.getElementById('myHand');
+  el.innerHTML = '';
+  if (!Array.isArray(hand)) return;
+  hand.forEach((cardId, idx) => {
+    const card = CARDS[cardId];
+    if (!card) return;
+    const div = document.createElement('div');
+    div.className = 'hand-card';
+    if (selectedCardIdx === idx) div.classList.add('selected');
+    if (myK < card.cost.deploy) div.classList.add('unaffordable');
+    div.innerHTML = `
+      <div class="slot-icon">${card.icon}</div>
+      <div class="slot-name">${card.name}</div>
+      <div class="slot-stats">💎${card.cost.deploy} ${card.type !== 'op' ? `⚔️${card.atk} ❤️${card.hp}` : 'OP'}</div>
+    `;
+    div.onclick = () => onHandCardClick(idx);
+    el.appendChild(div);
+  });
+}
+
+function onHandCardClick(idx) {
+  if (gameState.turn !== mySide || gameState.phase !== 'main') return;
+  if (gameState[mySide].hand[idx] === '__hidden__') return;  // 服务器还没返回手牌（不应该发生）
+  const card = CARDS[gameState[mySide].hand[idx]];
+  if (!card) return;
+  if (gameState.k[mySide].cur < card.cost.deploy) {
+    addLog(`❌ K 值不足（需 ${card.cost.deploy}，当前 ${gameState.k[mySide].cur}）`, 'damage');
+    return;
+  }
+  if (card.type === 'op') {
+    addLog('❌ MVP 暂未实现 op_card（Phase 2）', 'damage');
+    return;
+  }
+  selectedCardIdx = (selectedCardIdx === idx) ? null : idx;
+  render();
+}
+
+function onSupportSlotClick(slot) {
+  if (gameState.turn !== mySide || gameState.phase !== 'main') return;
+  if (slot === HQ_SLOT) {
+    addLog('❌ 不能部署到 HQ 槽位', 'damage');
+    return;
+  }
+  if (selectedCardIdx === null) {
+    addLog('❌ 请先点击手牌', 'damage');
+    return;
+  }
+  sendAction({ kind: 'play_card', cardIdx: selectedCardIdx, slot });
+  selectedCardIdx = null;
+}
+
+// ==================== 日志 ====================
+function addLog(msg, cls) {
+  const log = document.getElementById('log');
+  const div = document.createElement('div');
+  div.className = 'msg' + (cls ? ' ' + cls : '');
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderLog(logArr) {
+  const log = document.getElementById('log');
+  log.innerHTML = '';
+  logArr.forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'msg';
+    div.textContent = `[${new Date(entry.time).toLocaleTimeString()}] ${entry.msg}`;
+    log.appendChild(div);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+
+// ==================== 大厅 ====================
+function showLobby() { document.getElementById('lobby').style.display = 'block'; document.getElementById('game').style.display = 'none'; }
+function showGame() { document.getElementById('lobby').style.display = 'none'; document.getElementById('game').style.display = 'block'; }
+function showJoin() { document.getElementById('lobbyMain').style.display = 'none'; document.getElementById('lobbyJoin').style.display = 'block'; setTimeout(() => document.getElementById('roomInput').focus(), 100); }
+function backToMain() { document.getElementById('lobbyMain').style.display = 'block'; document.getElementById('lobbyJoin').style.display = 'none'; document.getElementById('lobbyWaiting').style.display = 'none'; }
+
+function showWaiting(id) {
+  document.getElementById('lobbyMain').style.display = 'none';
+  document.getElementById('lobbyJoin').style.display = 'none';
+  document.getElementById('lobbyWaiting').style.display = 'block';
+  document.getElementById('roomCode').textContent = id;
+}
+
+function createRoom() {
+  wsConnect(() => wsSend({ type: 'create_room' }));
+}
+
+function joinRoom() {
+  const rid = document.getElementById('roomInput').value.trim().toUpperCase();
+  if (rid.length !== 4) {
+    document.getElementById('joinStatus').innerHTML = '<span style="color:#f44">请输入 4 位房间号</span>';
+    return;
+  }
+  document.getElementById('joinBtn').disabled = true;
+  wsConnect(() => wsSend({ type: 'join_room', roomId: rid }));
+}
+
+function cancelWait() {
+  if (wsConn) try { wsConn.close(); } catch(e) {}
+  backToMain();
+}
+
+showLobby();
+</script>
+</body>
+</html>
