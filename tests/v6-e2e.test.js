@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const HTML_PATH = path.join(__dirname, '..', 'versions', 'v6.0', '2035_battle_v6.html');
+const HTML_PATH = path.join(__dirname, '..', 'src', 'index-v6.html');
 
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 

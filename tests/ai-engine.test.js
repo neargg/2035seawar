@@ -15,7 +15,7 @@ const path = require('path');
 const vm = require('vm');
 
 const VERSION = 'v6.0';
-const HTML_PATH = path.join(__dirname, '..', 'versions', VERSION, '2035_battle_v6.html');
+const HTML_PATH = path.join(__dirname, '..', 'src', 'index-v6.html');
 
 let passed = 0;
 let failed = 0;

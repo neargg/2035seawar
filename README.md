@@ -12,13 +12,12 @@
 
 **核心玩法**：6 大阵营（苍龙/利维坦/北极熊/武士/雄鹰/灰狼）× 135 张卡 × 17 种机制 × 3 种对战模式（人机/双人热座/联机 WebSocket）。
 
-**当前版本**：V6.0 — AI 智能化升级 & 战斗动画系统（[查看 PRD](docs/PRD_v6.0.md)）
+**当前版本**：V6.0 — AI 智能化升级 & 战斗动画系统（[查看 PRD](docs/prd/PRD_v6.0.md)）
 
 ## 🎮 在线试玩
 
-- **V6.0（开发版）**：http://111.229.64.124/v6/ — 当前最新
-- **V4.2.4（存档版）**：http://111.229.64.124/ — 联机模式已知问题，仅推荐人机对战
-- **GitHub Pages 预览**：https://neargg.github.io/2035seawar/ — 部署后启用
+- **V6.0（开发版）**：https://nearapp.xyz — 当前最新
+- **GitHub Pages 预览**：https://neargg.github.io/2035seawar/src/index-v6.html
 
 ## 📂 仓结构
 
@@ -26,26 +25,37 @@
 2035seawar/
 ├── README.md              ← 你正在看
 ├── CHANGELOG.md           ← 版本变更日志
+├── CODEBUDDY.md           ← Agent 协作规则（WorkBuddy 维护）
 ├── .gitignore
 ├── .github/
-│   └── workflows/         ← CI: 自动跑 game logic 测试
-├── docs/                  ← 项目文档
+│   └── workflows/         ← CI: 自动跑 game logic 测试（元一维护）
+├── src/                   ← 当前最新源代码（巴蒂开发）
+│   ├── index-v6.html      ← V6.0 客户端（AI+动画）
+│   └── index-v5.1.html    ← V5.5 客户端（稳定版）
+├── server/                ← 服务端代码（巴蒂维护）
+│   ├── game-engine.js
+│   ├── cards-data.js
+│   └── game-server.js
+├── docs/                  ← 项目文档（WorkBuddy + 元一维护）
 │   ├── INDEX.md
-│   ├── PRD_v6.0.md
-│   ├── 优化规划.md
-│   └── 协作说明.md
-├── versions/              ← 历史版本归档（只读快照）
+│   ├── prd/
+│   ├── guides/
+│   ├── planning/
+│   ├── design/
+│   └── analysis/
+├── versions/              ← 历史版本归档（元一维护）
 │   ├── v4.2/
 │   ├── v5.0/
 │   ├── v5.5/
-│   └── v6.0/              ← 当前开发版
-├── deploy/                ← 部署脚本与配置
+│   └── v6.0/
+├── tests/                 ← 测试（元一维护）
+│   ├── ai-engine.test.js
+│   └── v6-e2e.test.js
+├── deploy/                ← 部署脚本与配置（巴蒂维护）
 │   ├── deploy-to-tencent.sh
-│   └── nginx.conf
-├── tests/                 ← 单元测试（Node.js + vm 隔离）
-│   └── ai-engine.test.js
+│   └── nginx-2035sea.conf
 └── scripts/               ← 工具脚本
-    ├── init.sh            ← git init + 首次 commit
+    ├── init.sh
     └── sync-gitee.sh      ← Gitee 镜像同步
 ```
 
@@ -54,15 +64,13 @@
 ### 本地试玩
 
 ```bash
-# 进入 V6.0 目录
-cd versions/v6.0
-
 # 启 HTTP server（任意一种）
+cd src
 python3 -m http.server 8000
 # 或 npx http-server -p 8000
 
 # 浏览器打开
-open http://localhost:8000/2035_battle_v6.html
+open http://localhost:8000/index-v6.html
 ```
 
 ### 部署到腾讯云
@@ -72,7 +80,7 @@ open http://localhost:8000/2035_battle_v6.html
 vim deploy/deploy-to-tencent.sh
 
 # 部署当前版本
-./deploy/deploy-to-tencent.sh versions/v6.0/
+./deploy/deploy-to-tencent.sh src/
 ```
 
 ## 🧪 运行测试
@@ -91,11 +99,14 @@ node tests/ai-engine.test.js
 
 ## 🤝 协同
 
-| 角色 | 账号 | 职责 |
+| 角色 | 身份 | 职责 |
 |------|------|------|
-| 知总 (georgezhao) | neargg/nearzhao | 项目负责人 + 拍板 |
-| 巴蒂 (workbuddy agent) | - | 客户端 + 卡牌 + 部署 |
-| 元一 (main agent) | - | 服务器 + 测试 + 文档 |
+| 知总 (georgezhao) | 项目负责人 | 需求决策 + 拍板 + 测试 |
+| 巴蒂 (WorkBuddy 电脑端) | AI Agent | 客户端开发 + 服务端 + 部署 |
+| 元一 (OpenClaw) | AI Agent | CI/CD + 自动化测试 + 文档索引 |
+| WorkBuddy (云端) | AI Agent | PRD + Bug 分析 + 测试用例 + 路线图 |
+
+详见 [CODEBUDDY.md](CODEBUDDY.md) 和 [docs/analysis/](docs/analysis/)
 
 ## 📜 版本
 
@@ -116,4 +127,4 @@ TBD（待知总拍板）
 
 ---
 
-_本仓由元一维护，知总拍板，巴蒂实施。_
+_本仓由元一、巴蒂、WorkBuddy 协同维护，知总拍板。_
