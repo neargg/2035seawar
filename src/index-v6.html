@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>⚓ 2035 大海战 · V6.0</title>
+<title>⚓ 2035 大海战 · V6.2</title>
 <style>
   :root {
     --bg-deep: #061322;
@@ -689,7 +689,7 @@
 <div class="overlay show" id="startOverlay">
   <div class="start-card">
     <h2>⚓ 2035 大海战</h2>
-    <div class="subtitle">V6.0 · AI智能化 · 战斗动画</div>
+    <div class="subtitle">V6.2 · 修复TDZ初始化bug · AI智能化</div>
 
     <!-- 主菜单 -->
     <div id="startMain">
@@ -834,7 +834,7 @@
 <div class="wrap">
   <div class="left-panel">
     <header>
-      <h1>⚓ 2035 大海战 <span class="ver">V6.0</span></h1>
+      <h1>⚓ 2035 大海战 <span class="ver">V6.2</span></h1>
       <div class="round-info" id="roundInfo">
         <span id="roundText">准备中...</span>
         <span class="net-dot" id="netDot" style="display:none"></span>
@@ -1008,7 +1008,7 @@ class Settings {
   set(key, val) { this.data[key] = val; this.save(); this.apply(); }
   apply() {
     soundManager.enabled = this.data.sound;
-    if (typeof animQueue !== 'undefined' && animQueue) animQueue.enabled = this.data.animation;
+    try { if (animQueue) animQueue.enabled = this.data.animation; } catch(e) {}
   }
   aiStepDelay() {
     if (!this.data.animation) return 200;
@@ -1037,7 +1037,6 @@ class AnimationQueue {
   playNext() {
     if (this.queue.length === 0) {
       this.playing = false;
-      // P0-3 fix: 动画队列全部完成后触发最终渲染
       if (typeof render === 'function') render();
       return;
     }
@@ -1125,7 +1124,7 @@ class ParticleSystem {
     let lastT = performance.now();
     const step = () => {
       const now = performance.now();
-      const dt = Math.min(32, now - lastT);  // P1-3 fix: 使用实际帧间隔，上限32ms
+      const dt = Math.min(32, now - lastT);
       lastT = now;
       this.particles = this.particles.filter(p => p.life > 0);
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -2139,7 +2138,7 @@ function endTurn() {
   if (state.phase !== 'main') return;
   if (state.mode === 'online') { sendAction('end_turn', {}); return; }
   if (checkVictory()) return;
-  resetExhausted(state.turn);  // P1-5: 只重置当前回合方
+  resetExhausted(state.turn);
   state.selectedCardIdx = null;
   state.selectedAdvance = null;
   state.selectedBlockade = false;
@@ -2172,9 +2171,8 @@ function endTurn() {
 
 function aiFinishTurn() {
   if (state.phase === 'ended' || state.turn !== 'ai') return;
-  // P0-1 fix: AI 回合结束时先检查胜利条件
   if (checkVictory()) return;
-  resetExhausted('ai');  // P1-5: AI 回合结束，重置 AI 方
+  resetExhausted('ai');
   state.selectedCardIdx = null;
   state.selectedAdvance = null;
   state.selectedBlockade = false;
@@ -2207,8 +2205,6 @@ function confirmPass() {
 }
 
 function resetExhausted(who) {
-  // P1-5 fix: 只重置指定方的 exhausted，不再重置双方
-  // 调用时传入回合切换前的当前方（即将结束回合的一方）
   const target = who || state.turn;
   state[target].support.forEach(u => { if (u) u.exhausted = false; });
   state[target].frontline.forEach(u => { if (u) u.exhausted = false; });
@@ -3506,7 +3502,7 @@ function doAttack(attacker, target, atkWho, tgtWho) {
           isMissile, targetIsHQ
         }).then(() => {
           done();
-          checkVictory();  // P0-2 fix: 动画完成后检查胜利
+          checkVictory();
           resolve();
         });
       });
@@ -3814,7 +3810,6 @@ function log(msg, kind='') {
 // ==================== 渲染 ====================
 function render() {
   if (!state) return;
-  // P0-3 fix: 动画播放期间跳过全量重绘，避免打断动画
   if (settings.get('animation') && animQueue.playing) return;
   syncHQ('player');
   syncHQ('ai');
