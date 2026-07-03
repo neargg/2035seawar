@@ -66,8 +66,8 @@ test('包含 <title>', () => {
   assert(html.includes('<title>'), 'Missing title');
 });
 
-test('包含 V6.0 标识', () => {
-  assert(html.includes('V6.0') || html.includes('v6.0'), 'V6.0 identifier missing');
+test('包含 V6.3 标识', () => {
+  assert(html.includes('V6.3') || html.includes('v6.3'), 'V6.3 identifier missing');
 });
 
 // ==================== Test Suite 2: TDZ Bug 检测 ====================
