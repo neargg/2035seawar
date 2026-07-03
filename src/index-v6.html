@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>⚓ 2035 大海战 · V6.2</title>
+<title>⚓ 2035 大海战 · V6.3</title>
 <style>
   :root {
     --bg-deep: #061322;
@@ -517,7 +517,7 @@
   .faction-btn:hover { border-color: var(--accent-blue); background: rgba(74,124,179,0.25); }
   .faction-btn.selected { border-color: var(--accent-gold); background: rgba(218,165,32,0.2); box-shadow: 0 0 12px rgba(218,165,32,0.4); }
 
-  /* ========== V6.0 战斗动画 keyframes ========== */
+  /* ========== V6.3 战斗动画 keyframes ========== */
   /* 部署动画 */
   .card.anim-deploy { animation: card-deploy 400ms ease-out; }
   @keyframes card-deploy {
@@ -689,7 +689,7 @@
 <div class="overlay show" id="startOverlay">
   <div class="start-card">
     <h2>⚓ 2035 大海战</h2>
-    <div class="subtitle">V6.2 · 修复TDZ初始化bug · AI智能化</div>
+    <div class="subtitle">V6.3 · 巴蒂TDZ修复 + 小万P0/P1修复 · 稳定版</div>
 
     <!-- 主菜单 -->
     <div id="startMain">
@@ -834,7 +834,7 @@
 <div class="wrap">
   <div class="left-panel">
     <header>
-      <h1>⚓ 2035 大海战 <span class="ver">V6.2</span></h1>
+      <h1>⚓ 2035 大海战 <span class="ver">V6.3</span></h1>
       <div class="round-info" id="roundInfo">
         <span id="roundText">准备中...</span>
         <span class="net-dot" id="netDot" style="display:none"></span>
@@ -988,7 +988,7 @@ class SoundManager {
 const soundManager = new SoundManager();
 document.addEventListener('click', () => soundManager.init(), { once: true });
 
-// ==================== V6.0 设置管理 ====================
+// ==================== V6.3 设置管理 ====================
 class Settings {
   constructor() {
     this.data = { animation: true, sound: true, aiSpeed: 'normal' };
@@ -1020,7 +1020,7 @@ class Settings {
 }
 const settings = new Settings();
 
-// ==================== V6.0 动画队列 ====================
+// ==================== V6.3 动画队列 ====================
 class AnimationQueue {
   constructor() {
     this.queue = [];
@@ -1049,7 +1049,7 @@ class AnimationQueue {
 const animQueue = new AnimationQueue();
 settings.apply();
 
-// ==================== V6.0 粒子系统（Canvas） ====================
+// ==================== V6.3 粒子系统（Canvas） ====================
 class ParticleSystem {
   constructor(canvas) {
     this.canvas = canvas;
@@ -1148,7 +1148,7 @@ class ParticleSystem {
 }
 let particleSystem = null;
 
-// ==================== V6.0 战斗动画封装 ====================
+// ==================== V6.3 战斗动画封装 ====================
 class BattleAnimator {
   constructor() {
     this.particles = null;
@@ -1460,7 +1460,7 @@ const FACTION_KEYS = ['苍龙', '利维坦', '北极熊', '武士', '雄鹰', '�
 const PLAYER_DECK = DECK_CANGLONG;
 const AI_DECK     = DECK_LEVIATHAN;
 
-// ==================== V6.0 阵营 AI 策略权重 ====================
+// ==================== V6.3 阵营 AI 策略权重 ====================
 const FACTION_AI_STRATEGY = {
   '苍龙': {
     name: '中后期厚甲推进',
@@ -1887,7 +1887,7 @@ function onReceiveState(serverState) {
   render();
 }
 
-// ==================== V6.0 设置面板 ====================
+// ==================== V6.3 设置面板 ====================
 function showSettings() {
   document.getElementById('setAnim').checked = settings.get('animation');
   document.getElementById('setSound').checked = settings.get('sound');
@@ -1908,7 +1908,7 @@ function onSetSpeed(v) {
   });
 }
 
-// ==================== V6.0 难度选择 ====================
+// ==================== V6.3 难度选择 ====================
 function showDifficultyMenu() {
   document.getElementById('startMain').style.display = 'none';
   document.getElementById('startDifficulty').style.display = 'block';
@@ -2109,7 +2109,7 @@ function startTurn(who) {
 
   log(`━━ 第 ${state.round} 回合 · ${playerName(who)} 行动阶段 ━━`, 'warn');
 
-  // V6.0: 回合切换横幅
+  // V6.3: 回合切换横幅
   if (settings.get('animation') && state.mode !== 'online') {
     animator.turnBanner(who);
   }
@@ -3423,7 +3423,7 @@ function canPushFront(who) {
   return true;
 }
 
-// V6.0: doAttack - 计算结果 → 提交状态 → 渲染 → 播放覆盖动画
+// V6.3: doAttack - 计算结果 → 提交状态 → 渲染 → 播放覆盖动画
 // 返回 Promise，AI 引擎可 await
 function doAttack(attacker, target, atkWho, tgtWho) {
   if (state.blockaded[atkWho].includes(attacker.instanceId)) {
@@ -3513,7 +3513,7 @@ function doAttack(attacker, target, atkWho, tgtWho) {
   return Promise.resolve();
 }
 
-// ==================== V6.0 AI 引擎（评分制决策）====================
+// ==================== V6.3 AI 引擎（评分制决策）====================
 class AIEngine {
   constructor(difficulty, faction) {
     this.difficulty = difficulty || 'normal';
@@ -4092,7 +4092,7 @@ function renderHand(who) {
   });
 }
 
-// ==================== V6.0 初始化 ====================
+// ==================== V6.3 初始化 ====================
 function initV6() {
   const canvas = document.getElementById('fxCanvas');
   if (canvas) {
