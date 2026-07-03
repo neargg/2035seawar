@@ -1,0 +1,64 @@
+# ==================== 系统 ====================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==================== IDE ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ==================== Node.js ====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.yarn/
+
+# ==================== 测试 / 临时 ====================
+coverage/
+.nyc_output/
+*.log
+*.tmp
+*.bak
+*.swp
+.cache/
+.tmp/
+
+# ==================== 环境配置 ====================
+.env
+.env.local
+.env.*.local
+*.pem
+secrets.yaml
+config.local.json
+
+# ==================== 部署 ====================
+deploy/.ssh/
+deploy/.known_hosts
+deploy/config.local.sh
+
+# ==================== 大文件（用 LFS）====================
+# *.html 太大时启用
+# versions/**/*.html filter=lfs diff=lfs merge=text -text
+
+# ==================== 坚果云同步临时 ====================
+.sync_*
+.syncignore
+坚果云*.tmp
+
+# ==================== 项目特定 ====================
+# V6 单文件 HTML 早期草稿
+versions/*/drafts/
+versions/*/scratch/
+versions/*/test-*.html
