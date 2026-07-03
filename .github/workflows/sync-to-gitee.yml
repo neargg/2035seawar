@@ -1,0 +1,70 @@
+name: Sync to Gitee
+
+# 触发条件：push 到 main 时自动同步 GitHub 仓到 Gitee 镜像
+on:
+  push:
+    branches: [main]
+    # 不触发循环同步（Gitee webhook 推回 GitHub 不会发生因为 Gitee 不是源）
+  workflow_dispatch:  # 允许手动触发
+
+# 防止并发同步
+concurrency:
+  group: sync-to-gitee
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Mirror GitHub → Gitee
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 完整历史（mirror 需要）
+      
+      - name: Set up Git
+        run: |
+          git config user.name "yuanyi-bot"
+          git config user.email "yuanyi@nearapp.xyz"
+      
+      - name: Add Gitee remote
+        run: |
+          git remote add gitee "https://oauth2:${GITEE_TOKEN}@gitee.com/nearzhao/2035seawar.git"
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      
+      - name: Push to Gitee (mirror)
+        run: |
+          # 强制推送 main 分支到 Gitee
+          # 用 --force 是因为 Gitee 可能历史不同步（如 initial commit 不同）
+          # 用 --mirror 模式或者只 push main 分支
+          git push gitee main --force
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      
+      - name: Verify sync
+        run: |
+          # 简单验证：拉取 Gitee 的最新 commit hash，对比
+          GITEE_COMMIT=$(git ls-remote gitee main | awk '{print $1}')
+          GITHUB_COMMIT=$(git rev-parse HEAD)
+          echo "GitHub HEAD: $GITHUB_COMMIT"
+          echo "Gitee  main: $GITEE_COMMIT"
+          if [ "$GITEE_COMMIT" = "$GITHUB_COMMIT" ]; then
+            echo "✅ Sync OK"
+          else
+            echo "❌ Sync mismatch"
+            exit 1
+          fi
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "❌ GitHub → Gitee 镜像同步失败，请检查"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
